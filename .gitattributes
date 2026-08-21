@@ -1,0 +1,25 @@
+# Normalisasi akhir baris.
+#
+# Proyek ini dikembangkan di Windows, jadi berkasnya ber-CRLF. Tanpa aturan
+# ini, kontributor di Linux/macOS akan melihat SELURUH berkas berubah di
+# setiap diff — riwayat git jadi tidak terbaca. `text=auto eol=lf` menyimpan
+# semuanya sebagai LF di dalam repo, sementara Windows tetap memakai CRLF
+# di working directory-nya.
+* text=auto eol=lf
+
+*.py    text eol=lf
+*.md    text eol=lf
+*.txt   text eol=lf
+*.json  text eol=lf
+*.yml   text eol=lf
+*.yaml  text eol=lf
+*.cff   text eol=lf
+
+# Biner — jangan pernah disentuh normalisasi.
+*.pdf      binary
+*.bin      binary
+*.parquet  binary
+*.arrow    binary
+*.gz       binary
+*.pt       binary
+*.png      binary
