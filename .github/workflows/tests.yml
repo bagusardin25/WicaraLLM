@@ -1,0 +1,66 @@
+name: tests
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  pytest:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      # PyTorch versi CPU. Runner GitHub tidak punya GPU, dan seluruh uji
+      # memang dirancang jalan di CPU — satu-satunya uji CUDA
+      # (test_jalan_di_cuda_dengan_bf16) otomatis di-skip lewat
+      # pytest.mark.skipif kalau torch.cuda tidak tersedia.
+      #
+      # Wheel CPU jauh lebih kecil daripada CUDA (~200 MB vs ~3 GB), jadi
+      # CI selesai dalam hitungan menit.
+      - name: Install PyTorch (CPU)
+        run: |
+          python -m pip install --upgrade pip
+          pip install "torch==2.13.*" --index-url https://download.pytorch.org/whl/cpu
+
+      - name: Install dependensi
+        run: pip install -r requirements.txt
+
+      - name: Versi terpasang
+        run: |
+          python -c "import torch, numpy, pyarrow; \
+            print('torch  ', torch.__version__); \
+            print('numpy  ', numpy.__version__); \
+            print('pyarrow', pyarrow.__version__); \
+            print('cuda   ', torch.cuda.is_available())"
+
+      # Uji tidak butuh korpus sama sekali: yang berkaitan dengan data
+      # memakai korpus sintetis bigram yang dibangkitkan saat itu juga
+      # (src/train/synthetic.py), dan uji pembersihan memakai string
+      # literal. Jadi CI berjalan tanpa mengunduh 3,6 GB apa pun.
+      - name: Jalankan uji
+        run: python -m pytest tests/ -q --tb=short
+
+      # Jumlah parameter yang dilaporkan di README harus benar-benar cocok
+      # dengan yang dihitung kode. Kalau ada yang mengubah arsitektur dan
+      # lupa memperbarui dokumentasi, di sinilah ketahuan.
+      - name: Verifikasi jumlah parameter
+        run: |
+          python -c "
+          import sys; sys.path.insert(0, '.')
+          from src.model.config import CONFIGS
+          harapan = {'7m': 7_145_728, '19m': 18_880_896, '32m': 31_990_272,
+                     '56m': 55_964_800, '88m': 88_099_584}
+          for k, n in harapan.items():
+              nyata = CONFIGS[k].n_params
+              assert nyata == n, f'{k}: {nyata:,} != {n:,}'
+              print(f'{k:<5} {nyata:>12,} OK')
+          "
