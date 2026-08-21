@@ -1,0 +1,140 @@
+{
+  "budget": 1300000000,
+  "komposisi": {
+    "opensubtitles": 0.4,
+    "fineweb2": 0.2,
+    "wikipedia": 0.15,
+    "aya": 0.12,
+    "cendol": 0.12,
+    "ted": 0.01
+  },
+  "hasil": [
+    {
+      "sumber": "opensubtitles",
+      "dibaca": 65978714,
+      "ditulis": 1572927,
+      "duplikat": 55704,
+      "karakter": 1924000148,
+      "token_perkiraan": 520000040,
+      "kuota_token": 520000000,
+      "bytes": 596052788,
+      "detik": 1189.9,
+      "alasan": {
+        "ok": 61965553,
+        "terlalu_pendek": 3194368,
+        "huruf_terlalu_sedikit": 450994,
+        "kapital_terlalu_banyak": 232568,
+        "kredit_subtitle": 90224,
+        "huruf_terlalu_sedikit_di_baris": 29187,
+        "angka_terlalu_banyak": 15820
+      },
+      "lolos_filter": 0.9391749132909745
+    },
+    {
+      "sumber": "fineweb2",
+      "dibaca": 240917,
+      "ditulis": 239440,
+      "duplikat": 0,
+      "karakter": 962000541,
+      "token_perkiraan": 260000146,
+      "kuota_token": 260000000,
+      "bytes": 342471850,
+      "detik": 415.2,
+      "alasan": {
+        "ok": 239440,
+        "boilerplate": 814,
+        "bukan_indonesia": 470,
+        "kapital_terlalu_banyak": 190,
+        "huruf_terlalu_sedikit": 2,
+        "angka_terlalu_banyak": 1
+      },
+      "lolos_filter": 0.9938692578771943
+    },
+    {
+      "sumber": "wikipedia",
+      "dibaca": 456074,
+      "ditulis": 378177,
+      "duplikat": 738,
+      "karakter": 721500613,
+      "token_perkiraan": 195000165,
+      "kuota_token": 195000000,
+      "bytes": 237913569,
+      "detik": 324.5,
+      "alasan": {
+        "ok": 378915,
+        "terlalu_pendek": 60238,
+        "bukan_indonesia": 16139,
+        "huruf_terlalu_sedikit": 438,
+        "angka_terlalu_banyak": 202,
+        "kapital_terlalu_banyak": 104,
+        "boilerplate": 36,
+        "simbol_terlalu_banyak": 2
+      },
+      "lolos_filter": 0.8308191214583598
+    },
+    {
+      "sumber": "aya",
+      "dibaca": 1572852,
+      "ditulis": 1232928,
+      "duplikat": 20657,
+      "karakter": 577201296,
+      "token_perkiraan": 156000350,
+      "kuota_token": 156000000,
+      "bytes": 144192007,
+      "detik": 267.6,
+      "alasan": {
+        "ok": 1253585,
+        "terlalu_pendek": 317141,
+        "boilerplate": 1479,
+        "bukan_indonesia": 473,
+        "huruf_terlalu_sedikit": 105,
+        "angka_terlalu_banyak": 42,
+        "kapital_terlalu_banyak": 25,
+        "simbol_terlalu_banyak": 2
+      },
+      "lolos_filter": 0.7970139593553621
+    },
+    {
+      "sumber": "cendol",
+      "dibaca": 749929,
+      "ditulis": 549359,
+      "duplikat": 526,
+      "karakter": 577200775,
+      "token_perkiraan": 156000209,
+      "kuota_token": 156000000,
+      "bytes": 72755034,
+      "detik": 262.2,
+      "alasan": {
+        "ok": 549885,
+        "bukan_indonesia": 121571,
+        "terlalu_pendek": 77152,
+        "boilerplate": 1108,
+        "huruf_terlalu_sedikit": 97,
+        "kapital_terlalu_banyak": 56,
+        "angka_terlalu_banyak": 43,
+        "simbol_terlalu_banyak": 17
+      },
+      "lolos_filter": 0.7332494142778849
+    },
+    {
+      "sumber": "ted",
+      "dibaca": 178732,
+      "ditulis": 12704,
+      "duplikat": 0,
+      "karakter": 16115023,
+      "token_perkiraan": 4355411,
+      "kuota_token": 13000000,
+      "bytes": 5331226,
+      "detik": 7.9,
+      "alasan": {
+        "ok": 176478,
+        "terlalu_pendek": 1987,
+        "kredit_subtitle": 135,
+        "huruf_terlalu_sedikit": 87,
+        "angka_terlalu_banyak": 28,
+        "kapital_terlalu_banyak": 17
+      },
+      "lolos_filter": 0.9873889398652731
+    }
+  ]
+}

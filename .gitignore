@@ -1,0 +1,59 @@
+# ===========================================================================
+# 1. Environment & Cache Python
+# Biar virtual environment, cache pytest, ruff, dan bytecode gak menuh-menuhin repo
+# ===========================================================================
+.venv/
+venv/
+env/
+__pycache__/
+*.py[cod]
+*.so
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# ===========================================================================
+# 2. Paper & Tech Report Pihak Ketiga (Bahan Bacaan & Riset)
+# Ini kumpulan PDF tech report (DeepSeek, Qwen, MiniCPM, GLM, dll) yang
+# diunduh buat referensi arsitektur. File ini berhak cipta, jadi simpan
+# di lokal aja buat bahan riset dan jangan sampai ikut ke-push ke repo publik.
+# ===========================================================================
+tech_report_llm_openweight/
+
+# ===========================================================================
+# 3. Dataset Korpus, Checkpoint, & Artefak Training (~5 GB+)
+# Ukuran file-file ini terlalu gajah buat Git. Pakai pola `dir/*` (bukan `dir/`)
+# supaya file catatan/metadata kecil di dalamnya masih bisa di-whitelist pakai `!`.
+# Ingat: Git gak bakal bisa nge-unignore file kalau folder induknya langsung di-ignore.
+# ===========================================================================
+data/raw/*
+data/clean/*
+data/tokens/*
+checkpoints/
+logs/
+runs/
+*.bin
+*.arrow
+*.parquet
+*.jsonl.gz
+*.txt.gz
+
+# --- File penting yang tetap WAJIB di-tracking:
+# Metadata & dokumentasi sumber korpus biar bisa reproduce datanya kapan pun
+!data/raw/SOURCES.md
+!data/raw/manifest.json
+!data/clean/stats.json
+!data/**/.gitkeep
+
+# ===========================================================================
+# 4. File Sampah OS & Konfigurasi Editor
+# Biar setelan VS Code, file swap, ataupun cache OS lokal gak bikin kotor git status
+# ===========================================================================
+.vscode/
+.idea/
+*.swp
+*.log
+.DS_Store
+Thumbs.db
+desktop.ini
+

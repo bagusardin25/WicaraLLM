@@ -1,0 +1,142 @@
+{
+  "sources": {
+    "ted": {
+      "name": "TED2020 (Indonesia, monolingual)",
+      "homepage": "https://opus.nlpl.eu/TED2020/id&id/v1/TED2020",
+      "license": "CC-BY-NC-ND 4.0 (TED)",
+      "role": "Transkrip pidato lisan — bahasa lisan yang tertata",
+      "target_tokens": 5000000,
+      "status": "selesai",
+      "downloaded_at": "2026-08-21T23:29:20",
+      "files": [
+        {
+          "ok": true,
+          "bytes": 5364865,
+          "url": "https://object.pouta.csc.fi/OPUS-TED2020/v1/mono/id.txt.gz",
+          "file": "id.txt.gz",
+          "sha256": "52951257124f465c436d0b6cd031bd54a73a560cbf8c3db939880fff6452e252"
+        }
+      ]
+    },
+    "wikipedia": {
+      "name": "Wikipedia Bahasa Indonesia (dump 2023-11-01)",
+      "homepage": "https://huggingface.co/datasets/wikimedia/wikipedia",
+      "license": "CC-BY-SA-3.0 / GFDL",
+      "role": "Faktual, kalimat formal utuh, pengetahuan dunia",
+      "target_tokens": 90000000,
+      "status": "selesai",
+      "downloaded_at": "2026-08-21T23:34:56",
+      "files": [
+        {
+          "ok": true,
+          "bytes": 266839014,
+          "url": "https://huggingface.co/api/datasets/wikimedia/wikipedia/parquet/20231101.id/train/0.parquet",
+          "file": "wikipedia_000.parquet",
+          "sha256": "ff54e23415c8e62cddb75dcb7d5f4ae95ab6868306ea9c4735516381dbb4c559"
+        },
+        {
+          "ok": true,
+          "bytes": 146487760,
+          "url": "https://huggingface.co/api/datasets/wikimedia/wikipedia/parquet/20231101.id/train/1.parquet",
+          "file": "wikipedia_001.parquet",
+          "sha256": "2c0912b6e653251cbdf93df70ea24e20485744e188887158242d0c493c66c64b"
+        },
+        {
+          "ok": true,
+          "bytes": 170475025,
+          "url": "https://huggingface.co/api/datasets/wikimedia/wikipedia/parquet/20231101.id/train/2.parquet",
+          "file": "wikipedia_002.parquet",
+          "sha256": "d0894394c5d73624197916f0ca0e1fc8ee4a216d534567e0109e257cbe568df1"
+        }
+      ]
+    },
+    "cendol": {
+      "name": "Cendol Collection v2 (IndoNLP)",
+      "homepage": "https://huggingface.co/datasets/indonlp/cendol_collection_v2",
+      "license": "Apache-2.0",
+      "role": "Instruksi bahasa Indonesia & bahasa daerah",
+      "target_tokens": 30000000,
+      "status": "selesai",
+      "downloaded_at": "2026-08-21T23:37:23",
+      "files": [
+        {
+          "ok": true,
+          "bytes": 113950213,
+          "url": "https://huggingface.co/api/datasets/indonlp/cendol_collection_v2/parquet/default/train/0.parquet",
+          "file": "cendol_000.parquet",
+          "sha256": "cce8d988c147acdf3c0ea595c0b88a088fb4d52c9f6060d2845c4dc32ae15cad"
+        },
+        {
+          "ok": true,
+          "bytes": 93123238,
+          "url": "https://huggingface.co/api/datasets/indonlp/cendol_collection_v2/parquet/default/train/1.parquet",
+          "file": "cendol_001.parquet",
+          "sha256": "d560d73abe729437ac191fd59ab5d3aa32727a3f66c7a7bd34164d86b581c4fd"
+        },
+        {
+          "ok": true,
+          "bytes": 81220009,
+          "url": "https://huggingface.co/api/datasets/indonlp/cendol_collection_v2/parquet/default/train/2.parquet",
+          "file": "cendol_002.parquet",
+          "sha256": "da2d8f531f8924cb0958f650e8c2705d2af6d88c5165f0d51904f20c1813a72d"
+        }
+      ]
+    },
+    "aya": {
+      "name": "Aya Collection (indonesian)",
+      "homepage": "https://huggingface.co/datasets/CohereLabs/aya_collection_language_split",
+      "license": "Apache-2.0",
+      "role": "Instruksi & tanya-jawab beranotasi manusia",
+      "target_tokens": 40000000,
+      "status": "selesai",
+      "downloaded_at": "2026-08-21T23:44:20",
+      "files": [
+        {
+          "ok": true,
+          "bytes": 856350583,
+          "url": "https://huggingface.co/api/datasets/CohereLabs/aya_collection_language_split/parquet/indonesian/train/0.parquet",
+          "file": "aya_000.parquet",
+          "sha256": "7fc4113923e69630098669b1cf5359d0940172c168b102a4a408b1cdf142803e"
+        }
+      ]
+    },
+    "opensubtitles": {
+      "name": "OpenSubtitles v2024 (Indonesia, monolingual)",
+      "homepage": "https://opus.nlpl.eu/OpenSubtitles/id&id/v2024/OpenSubtitles",
+      "license": "Lihat opus.nlpl.eu — subtitle dari opensubtitles.org",
+      "role": "Dialog percakapan — tulang punggung korpus",
+      "target_tokens": 180000000,
+      "status": "selesai",
+      "downloaded_at": "2026-08-22T00:05:23",
+      "files": [
+        {
+          "ok": true,
+          "bytes": 1572426113,
+          "url": "https://object.pouta.csc.fi/OPUS-OpenSubtitles/v2024/mono/id.txt.gz",
+          "file": "id.txt.gz",
+          "sha256": "96aa12bf674d9fcf6ee2eaacb5b948e38f8634d620c14e849df725dc38bd3a7d"
+        }
+      ]
+    },
+    "fineweb2": {
+      "name": "FineWeb-2 (ind_Latn)",
+      "homepage": "https://huggingface.co/datasets/HuggingFaceFW/fineweb-2",
+      "license": "ODC-BY 1.0",
+      "role": "Ragam tulis informal dari web — penyeimbang register",
+      "target_tokens": 110000000,
+      "status": "selesai",
+      "downloaded_at": "2026-08-22T00:12:20",
+      "files": [
+        {
+          "url": "https://huggingface.co/api/datasets/HuggingFaceFW/fineweb-2/parquet/ind_Latn/train/0.parquet",
+          "file": "fineweb2.jsonl.gz",
+          "bytes": 563267227,
+          "docs": 400000,
+          "chars": 1586576229,
+          "ok": true,
+          "sha256": "d03c54d82c6a15f4aaf192fd17627f405fb6177a86977b0aed61762ae830fbb1"
+        }
+      ]
+    }
+  }
+}
