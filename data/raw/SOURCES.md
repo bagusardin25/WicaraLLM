@@ -1,10 +1,10 @@
-# Sumber Korpus — Mini-LLM Bahasa Indonesia
+# Sumber Korpus — Wicara
 
 Semua data di bawah adalah **teks nyata dari repositori publik**.
 Tidak ada satu pun data sintetis.
 
-Diunduh: 2026-08-22 00:12
-Target total: **455 juta token**
+Diunduh: 2026-08-22 02:12
+Kuota unduhan: **455 juta token** (target per sumber saat mengunduh; jumlah akhir setelah pembersihan tercatat di data/clean/stats.json)
 
 ---
 

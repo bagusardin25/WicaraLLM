@@ -15,6 +15,13 @@ percakapan dasar bahasa Indonesia ("halo", "apa kabar?").
 > GPU. Every component — RMSNorm, RoPE, GQA, SwiGLU, KV-cache, training loop —
 > written by hand in PyTorch. Documentation and code comments are in Indonesian.*
 
+![tests](https://github.com/USERNAME/REPO/actions/workflows/tests.yml/badge.svg)
+[![License](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](LICENSE)
+[![Python](https://img.shields.io/badge/python-3.11-blue.svg)](https://www.python.org/)
+
+<!-- Ganti USERNAME/REPO di badge pertama dengan milik Anda setelah repo dibuat,
+     mis. bagusardin/WicaraLLM -->
+
 ---
 
 ## Status
@@ -226,11 +233,58 @@ adalah sekitar 125× parameter dan 1000× compute.
 
 ---
 
-## Lisensi & atribusi
+## Lisensi
 
-Kode: bebas dipakai untuk belajar.
+Di proyek LLM ada **tiga hal berbeda** yang lisensinya tidak sama, dan
+mencampuradukkannya adalah kesalahan yang umum:
 
-Korpus **tidak** disertakan di repo ini. Tiap sumber punya lisensinya sendiri
-(CC-BY-SA, ODC-BY, Apache-2.0, dsb.) — lihat
-[`data/raw/SOURCES.md`](data/raw/SOURCES.md). Jalankan
-`scripts/download_corpus.py` untuk membangunnya ulang dari sumber aslinya.
+### 1. Kode — Apache-2.0
+
+Seluruh isi `src/`, `scripts/`, dan `tests/` berlisensi
+[Apache-2.0](LICENSE). Bebas dipakai, dimodifikasi, dan didistribusikan
+termasuk untuk keperluan komersial, dengan atribusi. Apache dipilih (bukan
+MIT) karena menyertakan hibah paten eksplisit.
+
+### 2. Korpus — tidak didistribusikan ulang
+
+Repo ini **tidak** memuat satu byte pun teks korpus. Yang disertakan hanya
+resep untuk membangunnya: `scripts/download_corpus.py` mengunduh langsung
+dari sumber aslinya, dan [`data/raw/SOURCES.md`](data/raw/SOURCES.md) mencatat
+tautan, lisensi, sitasi, serta SHA256 tiap berkas.
+
+Lisensi tiap sumber berbeda-beda dan harus dipatuhi masing-masing:
+
+| Sumber | Lisensi | Catatan |
+|---|---|---|
+| Wikipedia Indonesia | CC-BY-SA-3.0 | *share-alike* |
+| FineWeb-2 | ODC-BY-1.0 | atribusi |
+| Aya Collection | Apache-2.0 | bebas |
+| Cendol v2 | Apache-2.0 | bebas |
+| TED2020 | CC-BY-NC-ND-4.0 | **non-komersial** |
+| OpenSubtitles | lihat opus.nlpl.eu | status paling tidak jelas |
+
+### 3. Bobot model — belum ada, dan perlu dipikirkan sebelum dirilis
+
+Belum ada bobot yang dirilis. Saat nanti `wicara-56m-base` dipublikasikan,
+dua hal berikut perlu dinyatakan terus terang di *model card*-nya:
+
+**OpenSubtitles menyumbang 40% korpus.** Isinya dialog film yang diunggah
+pengguna ke opensubtitles.org. OPUS mendistribusikannya untuk keperluan riset,
+dan melatih model di atasnya adalah praktik yang lazim di penelitian. Tapi
+status hukum *bobot model* sebagai karya turunan belum tuntas di mana pun, dan
+repo ini tidak berpura-pura tahu jawabannya.
+
+**TED2020 berlisensi non-komersial** (CC-BY-NC-ND). Porsinya cuma 0,3%, tapi
+kalau bobot model hendak dipakai komersial, sumber ini sebaiknya dikeluarkan
+dan model dilatih ulang tanpanya — komposisi korpus bisa diatur di
+`KOMPOSISI` pada `scripts/clean_corpus.py`.
+
+Untuk penggunaan sebagai bahan belajar dan riset — tujuan proyek ini — kedua
+hal di atas tidak menjadi masalah. Keduanya baru penting kalau arahnya berubah
+ke komersial.
+
+## Atribusi
+
+Kalau memakai kode ini, cukup sertakan atribusi sesuai Apache-2.0. Korpus
+harus disitasi ke sumber aslinya masing-masing — daftar sitasi lengkapnya
+ada di [`data/raw/SOURCES.md`](data/raw/SOURCES.md).
