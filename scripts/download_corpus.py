@@ -36,7 +36,7 @@ from src.data.sources import (  # noqa: E402
 
 RAW_DIR = REPO_ROOT / "data" / "raw"
 MANIFEST = RAW_DIR / "manifest.json"
-UA = {"User-Agent": "llmgusz-corpus-downloader/1.0"}
+UA = {"User-Agent": "wicara-corpus-downloader/1.0"}
 MB = 1024**2
 
 
@@ -191,13 +191,15 @@ def tulis_sources_md(manifest: dict) -> Path:
     """Dokumentasi asal-usul korpus dengan tautan langsung."""
     path = RAW_DIR / "SOURCES.md"
     L = [
-        "# Sumber Korpus — Mini-LLM Bahasa Indonesia",
+        "# Sumber Korpus — Wicara",
         "",
         "Semua data di bawah adalah **teks nyata dari repositori publik**.",
         "Tidak ada satu pun data sintetis.",
         "",
         f"Diunduh: {time.strftime('%Y-%m-%d %H:%M', time.localtime())}",
-        f"Target total: **{TOTAL_TARGET_TOKENS / 1e6:.0f} juta token**",
+        f"Kuota unduhan: **{TOTAL_TARGET_TOKENS / 1e6:.0f} juta token** "
+        "(target per sumber saat mengunduh; jumlah akhir setelah "
+        "pembersihan tercatat di data/clean/stats.json)",
         "",
         "---",
         "",
