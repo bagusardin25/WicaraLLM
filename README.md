@@ -1,3 +1,5 @@
+**🇮🇩 Bahasa Indonesia** | [🇬🇧 English](README_en.md)
+
 # Wicara
 
 **W**eight-efficient **I**ndonesian **C**onversational **A**rchitecture, **R**esearch **A**rtifact
@@ -15,12 +17,9 @@ percakapan dasar bahasa Indonesia ("halo", "apa kabar?").
 > GPU. Every component — RMSNorm, RoPE, GQA, SwiGLU, KV-cache, training loop —
 > written by hand in PyTorch. Documentation and code comments are in Indonesian.*
 
-![tests](https://github.com/USERNAME/REPO/actions/workflows/tests.yml/badge.svg)
+![tests](https://github.com/bagusardin25/WicaraLLM/actions/workflows/tests.yml/badge.svg)
 [![License](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](LICENSE)
 [![Python](https://img.shields.io/badge/python-3.11-blue.svg)](https://www.python.org/)
-
-<!-- Ganti USERNAME/REPO di badge pertama dengan milik Anda setelah repo dibuat,
-     mis. bagusardin/WicaraLLM -->
 
 ---
 
@@ -30,17 +29,17 @@ percakapan dasar bahasa Indonesia ("halo", "apa kabar?").
 |---|---|---|
 | 0 | Environment & benchmark GPU | ✅ Selesai |
 | 1 | Pipeline data (unduh, bersih, dedup) | ✅ Selesai |
-| 2 | Tokenizer BPE 16k + packing | 🟨 Special token siap, BPE belum dilatih |
+| 2 | Tokenizer BPE 16k + packing | ✅ Selesai |
 | 3 | Arsitektur model | ✅ Selesai |
 | 3b | Uji sanity | ✅ Selesai |
 | 4 | Training loop | ✅ Selesai |
-| 5 | Pretrain | ⬜ Menunggu Fase 2 |
+| 5 | Pretrain | ⬜ Siap dijalankan — lihat [panduan](notes/04-panduan-pretrain.md) |
 | 6 | SFT percakapan | ⬜ |
 | 7 | Inference engine & CLI | ⬜ |
 | 8 | Evaluasi | ⬜ |
 
-**105 uji lolos.** Model, trainer, checkpoint, dan korpus sudah siap; tinggal
-tokenizer sebelum pretrain bisa dijalankan.
+**149 uji lolos.** Model, trainer, checkpoint, korpus, dan tokenizer sudah
+siap. `train.bin` berisi **1.115.298.306 token** — pretrain tinggal dijalankan.
 
 ---
 
@@ -82,7 +81,7 @@ Arsitektur gaya Llama: pre-norm RMSNorm, RoPE, GQA, SwiGLU, tanpa bias,
 | `d_model` / `n_layer` | 640 / 10 |
 | Attention head | 10 query / 5 key-value (GQA 2:1) |
 | `head_dim` / `d_ffn` | 64 / 1728 |
-| Vocab | 16.384 (BPE custom Indonesia) |
+| Vocab | 16.384 (BPE byte-level custom, 4,26 karakter/token) |
 | Panjang konteks | 512 token |
 | Presisi | bf16 autocast |
 | Learning rate | 8,0e-4 (diskalakan 1/`d_model`, muP) |
@@ -109,17 +108,38 @@ Config `7m` dan `19m` dipakai untuk iterasi cepat dan uji, bukan untuk rilis.
 
 ## Korpus
 
-**1,29 miliar token** dari 3.985.535 dokumen. Seluruhnya teks nyata dari
+**1,12 miliar token** dari 3.985.535 dokumen. Seluruhnya teks nyata dari
 repositori publik — **tidak ada data sintetis**.
 
-| Sumber | Peran | Token | Porsi | Lolos filter |
-|---|---|---|---|---|
-| [OpenSubtitles v2024](https://opus.nlpl.eu/OpenSubtitles/id&id/v2024/OpenSubtitles) | Dialog percakapan | 520M | 40,3% | 93,9% |
-| [FineWeb-2 `ind_Latn`](https://huggingface.co/datasets/HuggingFaceFW/fineweb-2) | Ragam tulis informal | 260M | 20,1% | 99,4% |
-| [Wikipedia Indonesia](https://huggingface.co/datasets/wikimedia/wikipedia) | Faktual, kalimat utuh | 195M | 15,1% | 83,1% |
-| [Aya Collection](https://huggingface.co/datasets/CohereLabs/aya_collection_language_split) | Tanya-jawab | 156M | 12,1% | 79,7% |
-| [Cendol v2](https://huggingface.co/datasets/indonlp/cendol_collection_v2) | Instruksi Indonesia | 156M | 12,1% | 73,3% |
-| [TED2020](https://opus.nlpl.eu/TED2020/id&id/v1/TED2020) | Lisan tertata | 4M | 0,3% | 98,7% |
+| Sumber | Peran | Token | Porsi | Lolos filter | char/token |
+|---|---|---|---|---|---|
+| [OpenSubtitles v2024](https://opus.nlpl.eu/OpenSubtitles/id&id/v2024/OpenSubtitles) | Dialog percakapan | 484M | 43,2% | 93,9% | 3,98 |
+| [FineWeb-2 `ind_Latn`](https://huggingface.co/datasets/HuggingFaceFW/fineweb-2) | Ragam tulis informal | 210M | 18,7% | 99,4% | 4,58 |
+| [Wikipedia Indonesia](https://huggingface.co/datasets/wikimedia/wikipedia) | Faktual, kalimat utuh | 174M | 15,5% | 83,1% | 4,16 |
+| [Cendol v2](https://huggingface.co/datasets/indonlp/cendol_collection_v2) | Instruksi Indonesia | 129M | 11,5% | 73,3% | 4,46 |
+| [Aya Collection](https://huggingface.co/datasets/CohereLabs/aya_collection_language_split) | Tanya-jawab | 121M | 10,8% | 79,7% | 4,78 |
+| [TED2020](https://opus.nlpl.eu/TED2020/id&id/v1/TED2020) | Lisan tertata | 3M | 0,3% | 98,7% | 4,92 |
+
+Hasil akhir: `train.bin` **1.115.298.306 token**, `val.bin` 5.683.512 token.
+Validasi dipisahkan di tingkat **dokumen**, bukan dengan mengiris larik akhir —
+mengiris akan membelah dokumen antara latih dan validasi, dan itu kebocoran.
+
+**19,9 token per parameter** — nyaris tepat di titik Chinchilla-optimal (20)
+untuk model 56M, tanpa direncanakan.
+
+### Tokenizer
+
+BPE byte-level, vocab 16.384, dilatih dari korpus **bersih** (bukan mentah,
+supaya tidak ada slot vocab terbuang untuk sampah yang sudah disaring).
+
+Rasio kompresi **4,26 karakter/token** — di atas target plan 3,5-4,0.
+Tokenizer berbasis Inggris hanya mencapai ~2,2 untuk teks Indonesia. Sapaan
+yang jadi target proyek ini masing-masing satu token: `" halo"`, `" hai"`,
+`" iya"`, `" tidak"`.
+
+32 special token menempati ID 0-31 (8 aktif + 24 cadangan), diverifikasi
+otomatis setelah training. Slot cadangan memungkinkan menambah token baru
+nanti tanpa melatih ulang tokenizer dan tanpa me-resize embedding.
 
 Tautan unduhan langsung, lisensi, sitasi, dan SHA256 tiap berkas ada di
 [`data/raw/SOURCES.md`](data/raw/SOURCES.md). Statistik pembersihan lengkap —
@@ -156,7 +176,11 @@ py -3.11 -m venv .venv
 # 4. Bersihkan korpus (~40 menit, CPU saja)
 .venv\Scripts\python.exe scripts\clean_corpus.py
 
-# 5. Uji
+# 5. Latih tokenizer BPE 16k lalu pack ke .bin (~8 menit)
+.venv\Scripts\python.exe scripts	rain_tokenizer.py
+.venv\Scripts\python.exe scripts\pack_tokens.py
+
+# 6. Uji
 .venv\Scripts\python.exe -m pytest tests\ -q
 ```
 
@@ -176,11 +200,13 @@ Perintah lain yang berguna:
 src/
   model/       rmsnorm · rope · attention (GQA+KV-cache) · ffn · transformer
   data/        sources · readers · clean · dedup
-  train/       trainer · data (memmap) · lr_schedule · checkpoint · synthetic
-  tokenizer/   chat_template
+  train/       trainer · data (memmap, epoch penuh) · lr_schedule · checkpoint
+  infer/       generate (KV-cache, top-k/top-p, repetition penalty)
+  tokenizer/   bpe · chat_template
 scripts/       check_env · download_corpus · verify_corpus · clean_corpus ·
-               demo_cleaning · bench_model · train
-tests/         105 uji
+               demo_cleaning · train_tokenizer · pack_tokens · bench_model ·
+               train · generate
+tests/         149 uji
 notes/         catatan per fase + glosarium istilah LLM (PDF)
 ```
 
@@ -282,6 +308,19 @@ dan model dilatih ulang tanpanya — komposisi korpus bisa diatur di
 Untuk penggunaan sebagai bahan belajar dan riset — tujuan proyek ini — kedua
 hal di atas tidak menjadi masalah. Keduanya baru penting kalau arahnya berubah
 ke komersial.
+
+## Sitasi
+
+Kalau memakai kode atau model ini untuk riset, silakan sitasi:
+
+```bibtex
+@misc{ardin2026wicara,
+  title={Wicara: A Weight-efficient Indonesian Conversational Architecture Built from Scratch},
+  author={Bagus Ardin Prayoga},
+  year={2026},
+  url={https://github.com/bagusardin25/WicaraLLM}
+}
+```
 
 ## Atribusi
 
