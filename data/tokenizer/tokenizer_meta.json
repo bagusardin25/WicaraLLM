@@ -1,0 +1,15 @@
+{
+  "vocab_size": 16384,
+  "special_tokens": 32,
+  "sample_ratio": 0.15,
+  "train_seconds": 47.4,
+  "char_per_token": 4.4203,
+  "char_per_token_per_source": {
+    "opensubtitles": 3.9435,
+    "fineweb2": 4.6219,
+    "wikipedia": 4.2933,
+    "aya": 4.9586,
+    "cendol": 4.3818,
+    "ted": 4.9024
+  }
+}
