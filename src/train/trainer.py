@@ -1,25 +1,4 @@
-"""Training loop.
-
-Semua yang terjadi berulang puluhan ribu kali selama pretrain nanti.
-
-Empat teknik yang dipakai di sini dan alasannya:
-
-1. AUTOCAST bf16 — perkalian matriks dijalankan di 16-bit (jauh lebih cepat
-   di Tensor Core) sementara parameter tetap disimpan fp32. bf16 dipilih
-   ketimbang fp16 karena jangkauan eksponennya sama dengan fp32, sehingga
-   tidak perlu GradScaler dan tidak ada risiko underflow gradient.
-
-2. GRADIENT ACCUMULATION — gradient dari beberapa batch kecil ditumpuk dulu
-   sebelum parameter diperbarui. Hasil matematisnya identik dengan satu batch
-   besar, tapi VRAM yang dipakai tetap sekecil batch kecil. Inilah cara GPU
-   6 GB meniru GPU besar.
-
-3. GRADIENT CLIPPING — satu batch aneh bisa menghasilkan gradient raksasa
-   yang merusak bobot secara permanen. Clipping membatasi panjangnya.
-
-4. WEIGHT DECAY SELEKTIF — hanya dikenakan pada matriks bobot. Parameter
-   norm dan embedding dikecualikan; menyusutkan keduanya justru merusak.
-"""
+"""Training loop dengan bf16 autocast, gradient accumulation, clipping, dan selective weight decay."""
 
 import math
 import time
@@ -39,6 +18,7 @@ from src.train.checkpoint import (
 from src.train.config import TrainConfig
 from src.train.data import TokenDataset
 from src.train.lr_schedule import get_lr
+from src.tokenizer.chat_template import BOS_ID, EOS_ID
 
 GB = 1024**3
 
@@ -48,11 +28,12 @@ class Trainer:
         self,
         model_cfg: ModelConfig,
         train_cfg: TrainConfig,
-        decode_fn=None,
+        tokenizer=None,
     ):
         self.mcfg = model_cfg
         self.tcfg = train_cfg
-        self.decode_fn = decode_fn
+        # Tokenizer hanya dipakai untuk sample_probe.
+        self.tokenizer = tokenizer
 
         self.device = torch.device(train_cfg.device)
         torch.manual_seed(train_cfg.seed)
@@ -68,7 +49,8 @@ class Trainer:
         self.model = MiniLLM(model_cfg).to(self.device)
         self.optimizer = self._build_optimizer()
 
-        self.train_data = TokenDataset(train_cfg.train_bin, model_cfg.max_seq_len)
+        self.train_data = TokenDataset(train_cfg.train_bin,
+                                       model_cfg.max_seq_len, seed=train_cfg.seed)
         self.val_data = TokenDataset(train_cfg.val_bin, model_cfg.max_seq_len)
 
         self.total_steps = train_cfg.total_steps(model_cfg.max_seq_len)
@@ -80,14 +62,11 @@ class Trainer:
         self.best_val_loss = float("inf")
         self._last_ckpt_time = time.time()
 
-        # Generator terpisah berbenih tetap untuk evaluasi. Tanpa ini, tiap
-        # evaluasi memakai batch validasi berbeda dan angkanya bergoyang —
-        # naik-turunnya jadi tidak bisa dibedakan dari perubahan nyata.
+        # Generator terpisah berbenih tetap untuk evaluasi konsisten.
         self._eval_gen = torch.Generator().manual_seed(train_cfg.seed + 1)
 
     def close(self) -> None:
-        """Lepaskan memory map dataset. Penting di Windows sebelum file
-        token ditimpa oleh pipeline data."""
+        """Lepaskan memory map dataset."""
         self.train_data.close()
         self.val_data.close()
 
@@ -100,16 +79,7 @@ class Trainer:
     # -- optimizer --------------------------------------------------------
 
     def _build_optimizer(self) -> torch.optim.Optimizer:
-        """Pisahkan parameter yang kena weight decay dan yang tidak.
-
-        Kena decay      : matriks bobot (Linear) — dimensi >= 2
-        TIDAK kena decay: gain RMSNorm (1D) dan tabel embedding
-
-        Embedding dikecualikan karena menyusutkannya menarik semua token ke
-        arah nol dan mengaburkan perbedaan antar token. Parameter norm
-        dikecualikan karena tugasnya memang mengatur skala — menyusutkannya
-        melawan fungsinya sendiri.
-        """
+        """Pisahkan parameter yang kena weight decay dan yang tidak."""
         decay, no_decay = [], []
         for name, p in self.model.named_parameters():
             if not p.requires_grad:
@@ -124,9 +94,7 @@ class Trainer:
             {"params": no_decay, "weight_decay": 0.0},
         ]
 
-        # fused AdamW menjalankan pembaruan seluruh parameter dalam satu
-        # kernel CUDA, bukan satu kernel per tensor. Lumayan untuk model
-        # kecil yang punya banyak tensor mungil.
+        # Pakai fused AdamW di CUDA.
         use_fused = self.device.type == "cuda"
         opt = torch.optim.AdamW(
             groups,
@@ -141,11 +109,7 @@ class Trainer:
     # -- satu langkah -----------------------------------------------------
 
     def _train_step(self) -> tuple[float, float]:
-        """Satu update parameter penuh, mencakup semua micro-batch akumulasi.
-
-        Returns:
-            (loss rata-rata, grad norm sebelum clipping)
-        """
+        """Satu update parameter penuh dengan gradient accumulation."""
         self.model.train()
         total_loss = 0.0
 
@@ -158,10 +122,7 @@ class Trainer:
             ):
                 _, loss = self.model(x, y)
 
-            # Dibagi jumlah akumulasi supaya gradient totalnya setara
-            # RATA-RATA, bukan JUMLAH, dari seluruh micro-batch. Lupa membagi
-            # membuat gradient efektif jadi 16x lebih besar dan training
-            # meledak di langkah-langkah awal.
+            # Bagi loss dengan grad_accum_steps untuk mendapatkan rata-rata gradient.
             (loss / self.tcfg.grad_accum_steps).backward()
             total_loss += loss.item()
 
@@ -191,11 +152,7 @@ class Trainer:
 
     @torch.no_grad()
     def evaluate(self, n_batches: int | None = None) -> float:
-        """Loss rata-rata di data validasi.
-
-        Memakai generator berbenih tetap, jadi batch yang dipakai SAMA di
-        setiap evaluasi dan angkanya bisa dibandingkan lintas langkah.
-        """
+        """Hitung rata-rata loss di data validasi."""
         n_batches = n_batches or self.tcfg.eval_batches
         self.model.eval()
         gen = torch.Generator().manual_seed(self.tcfg.seed + 1)
@@ -218,25 +175,23 @@ class Trainer:
     # -- probe sampling ---------------------------------------------------
 
     @torch.no_grad()
-    def sample_probe(self, max_new_tokens: int = 48, temperature: float = 0.8) -> str:
-        """Hasilkan sedikit teks dari prompt tetap, untuk dilihat mata.
-
-        Versi minimal — sampler lengkap dibangun di Fase 7. Gunanya di sini
-        adalah melihat MODEL BERKEMBANG: bacalah samples.txt dari atas ke
-        bawah nanti, dan Anda akan melihat keluarannya bergerak dari token
-        acak, ke potongan kata, ke frasa, ke kalimat.
-        """
+    def sample_probe(
+        self, max_new_tokens: int = 60, temperature: float = 0.8, top_k: int = 40
+    ) -> str:
+        """Hasilkan teks sampel dari prompt tetap untuk evaluasi visual."""
         self.model.eval()
         prompts = self.tcfg.sample_prompts or [""]
-        keluaran = []
+        potongan = []
 
         for prompt_txt in prompts:
-            if self.decode_fn is not None and prompt_txt:
-                # Tokenizer belum ada di Fase 4; jalur ini aktif mulai Fase 5.
-                raise NotImplementedError("encode prompt butuh tokenizer")
+            if self.tokenizer is not None and prompt_txt:
+                awal = [BOS_ID] + self.tokenizer.encode(prompt_txt).ids
+            else:
+                awal = [BOS_ID]
 
-            idx = torch.zeros((1, 1), dtype=torch.long, device=self.device)
+            idx = torch.tensor([awal], dtype=torch.long, device=self.device)
             caches = self.model.make_caches(1, self.mcfg.max_seq_len)
+            keluar: list[int] = []
 
             for _ in range(max_new_tokens):
                 with torch.autocast(
@@ -244,16 +199,29 @@ class Trainer:
                     enabled=self.device.type == "cuda",
                 ):
                     logits, _ = self.model(idx, caches=caches, last_token_only=True)
-                probs = torch.softmax(
-                    logits[:, -1].float() / temperature, dim=-1
-                )
-                idx = torch.multinomial(probs, num_samples=1)
-                keluaran.append(int(idx.item()))
+
+                logit = logits[:, -1].float() / max(temperature, 1e-6)
+                if top_k:
+                    # Terapkan top-k filtering.
+                    ambang = torch.topk(logit, min(top_k, logit.size(-1)))[0][..., -1:]
+                    logit = logit.masked_fill(logit < ambang, float("-inf"))
+
+                nxt = torch.multinomial(torch.softmax(logit, dim=-1), num_samples=1)
+                tok = int(nxt.item())
+                if tok == EOS_ID:
+                    break
+                keluar.append(tok)
+                idx = nxt
+
+            if self.tokenizer is not None:
+                teks = self.tokenizer.decode(keluar, skip_special_tokens=False)
+                label = f"[{prompt_txt}]" if prompt_txt else "[<bos>]"
+                potongan.append(f"{label} {teks}")
+            else:
+                potongan.append(" ".join(str(t) for t in keluar[:32]))
 
         self.model.train()
-        if self.decode_fn is not None:
-            return self.decode_fn(keluaran)
-        return " ".join(str(t) for t in keluaran[:32])
+        return "\n".join(potongan)
 
     # -- checkpoint -------------------------------------------------------
 
@@ -267,10 +235,11 @@ class Trainer:
             best_val_loss=self.best_val_loss,
             model_config=self.mcfg.__dict__,
             train_config=self.tcfg.to_dict(),
+            data_state=self.train_data.state_dict(),
         )
 
     def resume(self, path: str | Path | None = None) -> bool:
-        """Lanjutkan dari checkpoint. Tanpa argumen, cari yang terbaru."""
+        """Lanjutkan training dari checkpoint."""
         path = path or find_latest(self.out_dir)
         if path is None:
             return False
@@ -282,6 +251,9 @@ class Trainer:
         self.step = meta["step"]
         self.tokens_seen = meta["tokens_seen"]
         self.best_val_loss = meta["best_val_loss"]
+        # Restore data state agar melanjutkan di epoch yang benar.
+        if meta.get("data_state"):
+            self.train_data.load_state_dict(meta["data_state"])
         print(f"  Dilanjutkan dari {Path(path).name} "
               f"(langkah {self.step:,}, {self.tokens_seen / 1e6:.1f}M token)")
         return True
@@ -350,9 +322,7 @@ class Trainer:
                     f.write(f"--- step {self.step} ---\n{contoh}\n\n")
                 t0, tokens_at_mark = time.time(), self.tokens_seen
 
-            # Checkpoint berbasis WAKTU, bukan jumlah langkah. Yang ingin
-            # dibatasi adalah berapa lama kerja yang hilang kalau mati
-            # mendadak, dan itu satuannya menit.
+            # Simpan checkpoint berbasis waktu.
             if (time.time() - self._last_ckpt_time
                     > self.tcfg.checkpoint_interval_minutes * 60):
                 self.save(f"step_{self.step}.pt")
@@ -377,7 +347,8 @@ class Trainer:
     def _print_header(self, target: int) -> None:
         print(f"  Model            : {self.mcfg.name} "
               f"({self.mcfg.n_params / 1e6:.1f}M parameter)")
-        print(f"  Data latih       : {self.train_data.n_tokens / 1e6:.1f}M token")
+        print(f"  Data latih       : {self.train_data.n_tokens / 1e6:.1f}M token "
+              f"({self.train_data.n_chunks:,} potongan)")
         print(f"  Data validasi    : {self.val_data.n_tokens / 1e6:.1f}M token")
         print(f"  Batch            : {self.tcfg.batch_size} x "
               f"{self.tcfg.grad_accum_steps} akumulasi = "

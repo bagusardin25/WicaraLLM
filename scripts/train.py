@@ -25,6 +25,7 @@ from src.model.config import CONFIGS  # noqa: E402
 from src.train.config import TrainConfig, scaled_lr  # noqa: E402
 from src.train.lr_schedule import describe_schedule  # noqa: E402
 from src.train.trainer import Trainer  # noqa: E402
+from src.tokenizer.bpe import load as load_tokenizer  # noqa: E402
 
 
 def main() -> int:
@@ -48,6 +49,9 @@ def main() -> int:
     p.add_argument("--log-interval", type=int, default=10)
     p.add_argument("--sample-interval", type=int, default=500)
     p.add_argument("--ckpt-minutes", type=float, default=30.0)
+    p.add_argument("--tokenizer",
+                   default="data/tokenizer/wicara-bpe-16k.json",
+                   help="dipakai agar samples.txt berisi teks terbaca")
     args = p.parse_args()
 
     mcfg = CONFIGS[args.model]
@@ -92,7 +96,20 @@ def main() -> int:
     print("  TRAINING")
     print("=" * 66)
 
-    trainer = Trainer(mcfg, tcfg)
+    # Tokenizer hanya untuk sample_probe. Kalau tidak ada, training tetap
+    # jalan tapi samples.txt berisi ID token mentah yang tak terbaca.
+    tok = None
+    tok_path = Path(args.tokenizer)
+    if tok_path.exists():
+        tok = load_tokenizer(tok_path)
+        print(f"  Tokenizer  : {tok_path.name} "
+              f"(vocab {tok.get_vocab_size():,}) -- samples.txt terbaca")
+    else:
+        print(f"  [!] Tokenizer tidak ada di {tok_path}")
+        print("      samples.txt akan berisi ID token, bukan teks.")
+    print()
+
+    trainer = Trainer(mcfg, tcfg, tokenizer=tok)
     try:
         if args.resume:
             trainer.resume()

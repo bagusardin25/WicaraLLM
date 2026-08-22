@@ -1,12 +1,4 @@
-"""Simpan dan lanjutkan training.
-
-Wajib ada SEBELUM run panjang. Laptop bisa sleep, Windows bisa restart untuk
-update, dan kehilangan 9 jam training itu menyakitkan.
-
-Checkpoint yang benar menyimpan lebih dari sekadar bobot. Kalau optimizer
-state ikut hilang, momentum AdamW kembali nol dan loss melonjak saat
-dilanjutkan — training seolah mundur beberapa ribu langkah.
-"""
+"""Simpan dan lanjutkan training."""
 
 import json
 import time
@@ -26,13 +18,9 @@ def save_checkpoint(
     best_val_loss: float,
     model_config: dict,
     train_config: dict,
+    data_state: dict | None = None,
 ) -> Path:
-    """Tulis checkpoint secara atomik.
-
-    Ditulis ke file .tmp dulu lalu di-rename. Kalau listrik mati di tengah
-    penulisan, checkpoint lama tetap utuh — tanpa ini, satu file rusak bisa
-    menghapus satu-satunya titik pemulihan.
-    """
+    """Tulis checkpoint secara atomik."""
     path = Path(path)
     path.parent.mkdir(parents=True, exist_ok=True)
 
@@ -44,6 +32,7 @@ def save_checkpoint(
         "best_val_loss": best_val_loss,
         "model_config": model_config,
         "train_config": train_config,
+        "data_state": data_state,
         "torch_rng": torch.get_rng_state(),
         "cuda_rng": (
             torch.cuda.get_rng_state_all() if torch.cuda.is_available() else None
@@ -70,8 +59,7 @@ def load_checkpoint(
     if not path.exists():
         raise FileNotFoundError(f"Checkpoint tidak ditemukan: {path}")
 
-    # weights_only=False karena payload berisi dict config dan tensor RNG,
-    # bukan cuma bobot. Aman selama file-nya milik sendiri.
+    # weights_only=False karena butuh payload dict config dan RNG
     ckpt = torch.load(path, map_location=device, weights_only=False)
 
     model.load_state_dict(ckpt["model"])
@@ -79,8 +67,7 @@ def load_checkpoint(
         optimizer.load_state_dict(ckpt["optimizer"])
 
     if restore_rng:
-        # RNG ikut dipulihkan supaya urutan batch setelah resume tidak
-        # mengulang persis potongan data yang sama.
+        # Restore RNG supaya urutan batch tidak berulang.
         torch.set_rng_state(ckpt["torch_rng"].cpu().to(torch.uint8))
         if ckpt.get("cuda_rng") is not None and torch.cuda.is_available():
             torch.cuda.set_rng_state_all(
@@ -93,14 +80,12 @@ def load_checkpoint(
         "best_val_loss": ckpt["best_val_loss"],
         "model_config": ckpt["model_config"],
         "train_config": ckpt["train_config"],
+        "data_state": ckpt.get("data_state"),
     }
 
 
 def rotate_checkpoints(out_dir: str | Path, keep_last_n: int) -> None:
-    """Hapus checkpoint berkala yang lama, sisakan n terbaru.
-
-    File 'best.pt' dan 'final.pt' TIDAK pernah ikut dihapus.
-    """
+    """Hapus checkpoint lama, sisakan n terbaru (kecuali best.pt dan final.pt)."""
     out_dir = Path(out_dir)
     berkala = sorted(
         out_dir.glob("step_*.pt"),
@@ -123,8 +108,7 @@ def find_latest(out_dir: str | Path) -> Path | None:
 
 
 def append_jsonl(path: str | Path, record: dict) -> None:
-    """Tambah satu baris log JSON. Satu baris per event, aman dibaca ulang
-    walaupun training berhenti mendadak di tengah."""
+    """Tambah satu baris log JSON ke file log."""
     path = Path(path)
     path.parent.mkdir(parents=True, exist_ok=True)
     with path.open("a", encoding="utf-8") as f:

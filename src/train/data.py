@@ -1,18 +1,4 @@
-"""Pembaca dataset token — memmap uint16, tanpa DataLoader.
-
-Kenapa tidak memakai torch DataLoader:
-    Di Windows, worker DataLoader memakai spawn (bukan fork), sehingga tiap
-    worker mengimpor ulang seluruh modul dan biaya start-nya mahal. Untuk
-    dataset yang cuma satu larik angka datar, mesin sebesar itu tidak perlu.
-
-Pendekatan ala nanoGPT: seluruh korpus adalah SATU file biner berisi ID token
-uint16 berurutan, dibaca lewat np.memmap. Sistem operasi yang mengurus caching
-halaman, jadi file 800 MB tidak pernah dimuat penuh ke RAM.
-
-Batch diambil dari posisi ACAK di dalam file, bukan berurutan. Untuk pretrain
-ini justru lebih baik: tiap batch jadi campuran dokumen dari berbagai bagian
-korpus, sehingga gradient-nya tidak bias ke satu topik.
-"""
+"""Pembaca dataset token dengan np.memmap, tanpa DataLoader."""
 
 from pathlib import Path
 
@@ -21,7 +7,9 @@ import torch
 
 
 class TokenDataset:
-    def __init__(self, path: str | Path, seq_len: int):
+    """Pembaca dataset token dengan pengambilan batch mode epoch (default) atau acak (evaluasi)."""
+
+    def __init__(self, path: str | Path, seq_len: int, seed: int = 1337):
         self.path = Path(path)
         if not self.path.exists():
             raise FileNotFoundError(
@@ -31,7 +19,7 @@ class TokenDataset:
             )
 
         self.seq_len = seq_len
-        # mode='r' = read-only, tidak menyalin apa pun ke RAM.
+        # Read-only memmap.
         self.data = np.memmap(self.path, dtype=np.uint16, mode="r")
 
         # Butuh seq_len + 1 token: yang terakhir jadi target token sebelumnya.
@@ -42,6 +30,57 @@ class TokenDataset:
                 f"terlalu pendek untuk seq_len={seq_len}."
             )
 
+        # -- keadaan mode epoch --
+        self.n_chunks = (len(self.data) - 1) // seq_len
+        self._seed = seed
+        self._epoch = 0
+        self._pos = 0
+        self._order: np.ndarray | None = None
+
+    # -- mode epoch -------------------------------------------------------
+
+    def _acak_ulang(self) -> None:
+        """Acak urutan potongan untuk satu putaran baru."""
+        rng = np.random.default_rng(self._seed + self._epoch)
+        self._order = rng.permutation(self.n_chunks)
+        self._pos = 0
+
+    def _ambil_start(self, n: int) -> np.ndarray:
+        """Posisi awal untuk n potongan berikutnya, lanjut ke epoch baru
+        kalau yang sekarang habis."""
+        if self._order is None:
+            self._acak_ulang()
+
+        keluar = []
+        sisa = n
+        while sisa > 0:
+            tersedia = self.n_chunks - self._pos
+            if tersedia == 0:
+                self._epoch += 1
+                self._acak_ulang()
+                tersedia = self.n_chunks
+            ambil = min(sisa, tersedia)
+            keluar.append(self._order[self._pos : self._pos + ambil])
+            self._pos += ambil
+            sisa -= ambil
+
+        return np.concatenate(keluar) * self.seq_len
+
+    @property
+    def epoch(self) -> float:
+        """Berapa putaran korpus yang sudah dilewati (pecahan)."""
+        return self._epoch + self._pos / max(self.n_chunks, 1)
+
+    def state_dict(self) -> dict:
+        """Posisi baca, supaya resume tidak mengulang potongan yang sama."""
+        return {"epoch": self._epoch, "pos": self._pos, "seed": self._seed}
+
+    def load_state_dict(self, state: dict) -> None:
+        self._seed = state.get("seed", self._seed)
+        self._epoch = state.get("epoch", 0)
+        self._acak_ulang()
+        self._pos = min(state.get("pos", 0), self.n_chunks)
+
     def __len__(self) -> int:
         return len(self.data)
 
@@ -50,16 +89,7 @@ class TokenDataset:
         return len(self.data)
 
     def close(self) -> None:
-        """Lepaskan memory map.
-
-        WAJIB di Windows: selama sebuah file masih ter-map, sistem operasi
-        MELARANG file itu ditimpa atau dihapus. Tanpa ini, pipeline data yang
-        menulis ulang train.bin akan gagal dengan OSError yang membingungkan
-        selama masih ada TokenDataset hidup yang menunjuk ke sana.
-
-        Di Linux hal ini tidak terjadi, jadi bug-nya mudah lolos kalau
-        pengembangannya di Linux.
-        """
+        """Lepaskan memory map untuk menghindari OSError saat penimpaan file di Windows."""
         mm = getattr(self.data, "_mmap", None)
         if mm is not None:
             mm.close()
@@ -77,23 +107,25 @@ class TokenDataset:
         device: torch.device | str,
         generator: torch.Generator | None = None,
     ) -> tuple[torch.Tensor, torch.Tensor]:
-        """Ambil satu batch acak.
+        """Ambil satu batch.
+
+        Args:
+            batch_size: Ukuran batch.
+            device: Perangkat komputasi.
+            generator: Generator angka acak (jika none, pakai urutan epoch).
 
         Returns:
             x: (batch, seq_len) input
-            y: (batch, seq_len) target — SAMA dengan x tapi digeser satu posisi.
-
-        Pergeseran satu posisi inilah inti next-token prediction: saat model
-        melihat x[t], ia harus menebak y[t] yang sebenarnya adalah x[t+1].
-        Lupa menggeser membuat loss awal turun di bawah ln(vocab) dan modelnya
-        tidak belajar apa pun yang berguna.
+            y: (batch, seq_len) target (digeser satu posisi)
         """
-        ix = torch.randint(
-            self.max_start, (batch_size,), generator=generator, device="cpu"
-        )
+        if generator is not None:
+            ix = torch.randint(
+                self.max_start, (batch_size,), generator=generator, device="cpu"
+            )
+        else:
+            ix = torch.from_numpy(self._ambil_start(batch_size))
 
-        # astype(np.int64) wajib: PyTorch tidak punya tipe uint16, dan
-        # F.cross_entropy menuntut target bertipe long.
+        # Konversi ke np.int64 sebelum ke PyTorch.
         x = torch.stack(
             [
                 torch.from_numpy(
@@ -112,8 +144,7 @@ class TokenDataset:
         )
 
         if str(device).startswith("cuda"):
-            # pin_memory + non_blocking membuat transfer CPU->GPU bisa
-            # tumpang tindih dengan komputasi, bukan menunggu bergantian.
+            # Transfer asinkron ke GPU.
             x = x.pin_memory().to(device, non_blocking=True)
             y = y.pin_memory().to(device, non_blocking=True)
         else:
@@ -123,11 +154,7 @@ class TokenDataset:
 
 
 def write_tokens(path: str | Path, tokens: np.ndarray) -> None:
-    """Tulis larik token ke file biner uint16.
-
-    uint16 menampung nilai 0..65535, cukup untuk vocab 16.384 dan separuh
-    lebih hemat dibanding uint32.
-    """
+    """Tulis larik token ke file biner uint16."""
     path = Path(path)
     path.parent.mkdir(parents=True, exist_ok=True)
 
