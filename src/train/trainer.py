@@ -37,9 +37,8 @@ class Trainer:
         self.tcfg = train_cfg
         # Tokenizer hanya dipakai untuk sample_probe.
         self.tokenizer = tokenizer
-        # chat_mode mengubah sample_probe agar memakai chat template, supaya
-        # yang terlihat di samples.txt adalah jawaban asisten sungguhan —
-        # bukan lanjutan teks seperti saat pretrain.
+        # chat_mode: sample_probe memakai chat template, jadi yang tercatat
+        # jawaban asisten, bukan lanjutan teks.
         self.chat_mode = chat_mode
 
         self.device = torch.device(train_cfg.device)
@@ -56,9 +55,7 @@ class Trainer:
         self.model = MiniLLM(model_cfg).to(self.device)
         self.optimizer = self._build_optimizer()
 
-        # Dataset bisa disuntikkan dari luar (dipakai SFT, yang memakai
-        # SFTDataset alih-alih TokenDataset). Kalau tidak, pakai memmap
-        # pretrain seperti biasa.
+        # Dataset bisa disuntik (SFTDataset). Default: memmap pretrain.
         self.train_data = train_data or TokenDataset(
             train_cfg.train_bin, model_cfg.max_seq_len, seed=train_cfg.seed)
         self.val_data = val_data or TokenDataset(
@@ -196,9 +193,7 @@ class Trainer:
 
         for prompt_txt in prompts:
             if self.chat_mode and self.tokenizer is not None and prompt_txt:
-                # Prompt dibungkus chat template dan diakhiri <|assistant|>,
-                # sehingga yang terlihat adalah JAWABAN model — bukan
-                # lanjutan teks seperti saat pretrain.
+                # Bungkus chat template, akhiri <|assistant|>.
                 from src.tokenizer.chat_template import Message, render
 
                 teks = render([Message("user", prompt_txt)],
@@ -228,9 +223,7 @@ class Trainer:
 
                 nxt = torch.multinomial(torch.softmax(logit, dim=-1), num_samples=1)
                 tok = int(nxt.item())
-                # Model chat berhenti di <|end|> (akhir giliran), bukan hanya
-                # di <|eos|> (akhir dokumen). Tanpa ini keluarannya melewati
-                # batas giliran dan model mengarang percakapan lanjutan.
+                # Chat berhenti di <|end|>, bukan hanya <|eos|>.
                 if tok == EOS_ID or (self.chat_mode and tok == END_TURN_ID):
                     break
                 keluar.append(tok)
@@ -368,12 +361,7 @@ class Trainer:
         }
 
     def _ringkas_data(self, ds) -> str:
-        """Deskripsi dataset yang cocok untuk pretrain maupun SFT.
-
-        TokenDataset berisi larik token datar; SFTDataset berisi contoh
-        percakapan terpisah. Keduanya dilaporkan dengan satuannya sendiri
-        alih-alih memaksakan satu bentuk.
-        """
+        """Ringkasan dataset untuk header: TokenDataset vs SFTDataset."""
         if hasattr(ds, "n_tokens"):
             return (f"{ds.n_tokens / 1e6:.1f}M token "
                     f"({ds.n_chunks:,} potongan)")

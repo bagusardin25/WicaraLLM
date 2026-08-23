@@ -1,22 +1,10 @@
-"""Fase 6 — SFT: ubah wicara-56m-base menjadi wicara-56m-chat.
+"""SFT: wicara-56m-base -> wicara-56m-chat.
 
     .venv\\Scripts\\python.exe scripts\\train_sft.py
 
-Perbedaan pokok dari pretrain:
-
-    Titik awal    : bobot dari checkpoint base, bukan acak
-    Optimizer     : BARU, tidak melanjutkan momentum pretrain
-    Learning rate : ~10x lebih kecil
-    Loss          : hanya pada token jawaban asisten
-    Durasi        : hitungan menit, bukan jam
-
-Kenapa optimizer dimulai dari nol: momentum AdamW dari pretrain menyimpan
-arah gradient untuk tugas yang berbeda (melanjutkan teks). Membawanya ke SFT
-justru menarik bobot ke arah lama.
-
-Kenapa LR jauh lebih kecil: model sudah punya kemampuan bahasa yang mahal
-didapat. LR besar akan menimpanya — catastrophic forgetting. Yang diinginkan
-hanya menggeser PERILAKU, bukan melatih ulang bahasanya.
+Bobot dari checkpoint base, optimizer baru, LR ~10x lebih kecil, loss
+hanya di token asisten. Momentum AdamW pretrain tidak dibawa — arahnya
+untuk lanjutkan teks, bukan jawab percakapan.
 """
 
 import argparse
@@ -106,7 +94,7 @@ def main() -> int:
           f"(hanya jawaban asisten)")
     print(f"    dimuat dalam {time.time() - t0:.0f}s")
 
-    # Arsitektur dibaca dari checkpoint, bukan ditebak — mustahil salah pasang.
+    # Arsitektur dari checkpoint, jangan tebak.
     ckpt = torch.load(base_path, map_location="cpu", weights_only=False)
     mcfg = ModelConfig(**{k: v for k, v in ckpt["model_config"].items()
                           if k in ModelConfig.__dataclass_fields__})
@@ -114,9 +102,8 @@ def main() -> int:
 
     langkah_per_epoch = len(train_data) / (args.batch_size * args.grad_accum)
     total_langkah = max(1, int(langkah_per_epoch * args.epochs))
-    # TrainConfig menghitung langkah dari total_tokens; di sini panjangnya
-    # bervariasi per contoh, jadi angka token dihitung mundur dari jumlah
-    # langkah yang diinginkan supaya jadwal LR tetap pas.
+    # TrainConfig menghitung langkah dari total_tokens. Panjang contoh SFT
+    # bervariasi, jadi token dihitung mundur dari jumlah langkah.
     tokens_per_step = args.batch_size * mcfg.max_seq_len * args.grad_accum
 
     tcfg = TrainConfig(
@@ -144,9 +131,7 @@ def main() -> int:
     if args.resume and trainer.resume():
         pass
     else:
-        # Muat BOBOT saja, bukan optimizer. Momentum AdamW dari pretrain
-        # menyimpan arah untuk tugas berbeda; membawanya ke SFT justru
-        # menarik bobot kembali ke perilaku lama.
+        # Bobot saja, bukan optimizer. Momentum pretrain untuk tugas berbeda.
         meta = load_checkpoint(base_path, model=trainer.model,
                                optimizer=None, device=args.device,
                                restore_rng=False)

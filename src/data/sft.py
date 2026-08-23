@@ -1,45 +1,27 @@
-"""Bangun data SFT percakapan dari sumber yang sudah ada.
+"""Tambang data SFT dari korpus yang sudah ada.
 
-Modul ini menambang dari data NYATA. Ada satu sumber lagi yang TIDAK ditambang
-dan tidak diurus di sini: 400 contoh tulis tangan di data/sft/tulis_tangan.jsonl
-(sekitar 1% dari total), untuk dua pola yang tidak ada di korpus mana pun —
-persona dan permintaan terbuka tanpa topik. Alasannya di
-scripts/build_sft_data.py::kumpulkan_tulis_tangan.
+Tiga sumber:
+    OpenSubtitles  sapaan. Satu-satunya yang punya "halo" -> "halo juga";
+                   Aya dan Cendol murni instruksi.
+    Aya            SODA-inst dan Dolly-v2 saja.
+    Cendol         wikihow.
 
-Tiga sumber tambang, tiga peran berbeda:
+Contoh tulis tangan (persona, permintaan terbuka) tidak diurus di sini;
+lihat scripts/build_sft_data.py::kumpulkan_tulis_tangan.
 
-    OpenSubtitles  -> sapaan dan basa-basi. Ditambang sebagai pasangan giliran
-                      nyata dari dialog film. Ini satu-satunya sumber yang
-                      punya "halo" -> "halo juga"; Aya dan Cendol seluruhnya
-                      dataset instruksi dan sama sekali tidak memuat sapaan.
+POLA_PASANGAN["perkenalan"] masih didefinisikan, kuotanya 0 di
+build_sft_data.py. Polanya dibiarkan supaya keputusan itu terlihat.
 
-    Aya            -> mengikuti instruksi. HANYA subset SODA-inst dan Dolly-v2.
-
-    Cendol         -> instruksi prosedural dari wikihow.
-
-Kategori `perkenalan` di POLA_PASANGAN masih didefinisikan, tapi kuotanya
-sudah disetel 0 di build_sft_data.py — pasangan "Siapa namamu?" -> "Namaku X"
-mengajarkan model memakai nama tokoh film, dan itu bertentangan dengan
-persona. Polanya dibiarkan ada supaya keputusan itu terlihat, bukan hilang
-diam-diam.
-
-Yang SENGAJA DIBUANG dan alasannya:
-
+Yang dibuang:
     HotpotQA, NQ-Open, Mintaka, Adversarial QA (531 ribu baris)
-        Tanya-jawab faktual berjawaban pendek dan tegas. Model 56M tidak punya
-        kapasitas menyimpan fakta-fakta itu, jadi yang ia pelajari bukan
-        jawabannya melainkan KEBIASAAN menjawab yakin tanpa tahu. Justru
-        memperparah halusinasi.
-
+        Tanya-jawab faktual pendek. 56M tidak menyimpan faktanya; yang
+        tertinggal kebiasaan menjawab yakin.
     Flan-CoT, PIQA, Flan-Coqa
-        Soal pilihan ganda dan penalaran berantai. Bukan percakapan, dan
-        Flan-Coqa keluarannya rusak (dialog banyak giliran digencet satu baris).
-
+        Pilihan ganda / CoT. Flan-Coqa keluarannya rusak.
     indo_puisi
-        Banyak keluaran berisi harfiah "nan" — nilai kosong yang bocor jadi teks.
-
+        Keluaran harfiah "nan".
     wikipedia_ban/gor/bjn/ace/bug
-        Bahasa Bali, Gorontalo, Banjar, Aceh, Bugis. Bukan bahasa Indonesia.
+        Bukan bahasa Indonesia.
 """
 
 import re
@@ -61,21 +43,11 @@ MAX_ASSIST_CHARS = 900
 # Penambangan sapaan dari subtitle
 # ==========================================================================
 
-# PASANGAN pola: baris pertama DAN baris kedua harus sama-sama cocok.
+# Kedua sisi harus cocok. Versi pertama cuma mencocokkan pembuka —
+# baris subtitle berurutan sering penutur yang sama:
 #
-# Versi pertama aturan ini hanya mencocokkan baris pembuka, dengan asumsi
-# baris berikutnya pasti tanggapannya. Asumsi itu SALAH di sebagian besar
-# kasus — baris subtitle berurutan sering diucapkan penutur yang sama, atau
-# terpisah pergantian adegan. Hasilnya bukan tanya-jawab:
-#
-#     "Halo, nak."      -> "Dia tak hanya takut, dia muak."
-#     "Terima kasih."   -> "Jangan hubungi kebun binatang."
-#
-# Melatih model dengan pasangan seperti itu mengajarkan menjawab dengan
-# kalimat tak nyambung — lebih merusak daripada tidak SFT sama sekali.
-#
-# Mensyaratkan KEDUA sisi cocok pola membuat hasilnya jauh lebih sedikit,
-# tapi yang lolos adalah pasangan giliran (adjacency pair) yang sungguhan.
+#     "Halo, nak."    -> "Dia tak hanya takut, dia muak."
+#     "Terima kasih." -> "Jangan hubungi kebun binatang."
 POLA_PASANGAN = {
     "sapaan": (
         re.compile(r"^(halo|hai|hei|hey|selamat (pagi|siang|sore|malam)|"
@@ -119,9 +91,8 @@ POLA_PASANGAN = {
     ),
 }
 
-# Respons ketidaktahuan diperlakukan berbeda: ia sah sebagai jawaban untuk
-# hampir semua PERTANYAAN, jadi cukup baris pertama berupa pertanyaan.
-# Inilah pola yang ingin diajarkan sebagai ganti mengarang fakta.
+# Ketidaktahuan: cukup sisi pertama berupa pertanyaan. "aku tidak tahu"
+# sah hampir di semua pertanyaan, beda dari POLA_PASANGAN.
 POLA_PERTANYAAN = re.compile(
     r"^(apa|siapa|kenapa|mengapa|bagaimana|gimana|di ?mana|ke ?mana|kapan|"
     r"berapa|apakah)\b.*\?$", re.IGNORECASE)
@@ -148,15 +119,10 @@ def _layak(teks: str, min_c: int, max_c: int) -> bool:
 
 
 def tambang_pasangan_subtitle(blok: str) -> list[tuple[str, str, str]]:
-    """Ambil pasangan (user, asisten, kategori) dari satu blok percakapan.
+    """Pasangan (user, asisten, kategori) dari satu blok subtitle.
 
-    Blok subtitle berisi baris berurutan dari satu adegan. Baris ke-n dan
-    ke-(n+1) biasanya giliran dua penutur berbeda, jadi pasangan berurutan
-    adalah perkiraan wajar untuk tanya-jawab.
-
-    Perkiraan ini tidak selalu benar — kadang dua baris berurutan diucapkan
-    penutur yang sama. Itu diterima: yang dipelajari model adalah pola
-    "ada giliran, lalu ada tanggapan", dan sebagian derau tidak merusaknya.
+    Baris berurutan dianggap giliran dua penutur. Tidak selalu benar;
+    POLA_PASANGAN menahan yang tidak nyambung.
     """
     baris = [b.strip() for b in blok.split("\n") if b.strip()]
     hasil = []
@@ -168,13 +134,10 @@ def tambang_pasangan_subtitle(blok: str) -> list[tuple[str, str, str]]:
         if not _layak(b, MIN_ASSIST_CHARS, MAX_ASSIST_CHARS):
             continue
 
-        # Pertanyaan yang dijawab dengan ketidaktahuan. Sah untuk pertanyaan
-        # apa pun, jadi cukup sisi pertama yang perlu berupa pertanyaan.
         if POLA_PERTANYAAN.match(a) and POLA_TIDAK_TAHU.match(b):
             hasil.append((a, b, "tidak_tahu"))
             continue
 
-        # Sisanya: KEDUA sisi harus cocok pola pasangannya.
         for kategori, (pola_a, pola_b) in POLA_PASANGAN.items():
             if pola_a.match(a) and pola_b.match(b):
                 hasil.append((a, b, kategori))

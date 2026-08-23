@@ -1,16 +1,10 @@
-"""Bangun data SFT percakapan ke data/sft/{train,val}.jsonl.gz
+"""Bangun data/sft/{train,val}.jsonl.gz
 
     .venv\\Scripts\\python.exe scripts\\build_sft_data.py
 
-Keluaran: satu objek JSON per baris,
-    {"messages": [{"role": "user", ...}, {"role": "assistant", ...}],
-     "sumber": "...", "kategori": "..."}
-
-Hampir semua contoh ditambang dari data NYATA. Lihat src/data/sft.py untuk
-daftar subset yang dipakai dan alasan tiap subset lain dibuang.
-
-Satu pengecualian: data/sft/tulis_tangan.jsonl berisi 400 contoh yang DITULIS
-TANGAN, bukan ditambang. Lihat kumpulkan_tulis_tangan() untuk alasannya.
+Hampir semua contoh ditambang (lihat src/data/sft.py). Pengecualian:
+data/sft/tulis_tangan.jsonl — 400 contoh tulis tangan, lihat
+kumpulkan_tulis_tangan().
 """
 
 import argparse
@@ -43,56 +37,27 @@ CLEAN = REPO_ROOT / "data" / "clean"
 OUT = REPO_ROOT / "data" / "sft"
 TULIS_TANGAN = REPO_ROOT / "data" / "sft" / "tulis_tangan.jsonl"
 
-# Kuota sengaja KECIL. SFT berlebihan membuat model kehilangan kemampuan
-# bahasa yang didapat susah payah di pretrain (catastrophic forgetting), dan
-# mutu contoh jauh lebih menentukan daripada jumlahnya.
+# Kuota sengaja kecil. SFT berlebihan menimpa pretrain.
 KUOTA_SUBTITLE = 16_000
 
-# Kuota per SUBSET, bukan per sumber.
-#
-# Versi pertama memakai satu kuota untuk seluruh Aya, dan akibatnya Dolly-v2
-# tidak kebagian sama sekali: kuota habis diisi SODA-inst yang kebetulan
-# dibaca lebih dulu. Padahal Dolly-v2 justru subset bermutu tertinggi —
-# ditulis manusia, bukan hasil terjemahan mesin.
+# Per subset, bukan per sumber. Kuota tunggal untuk seluruh Aya membuat
+# Dolly-v2 tidak kebagian — kuota habis di SODA-inst yang kebetulan dibaca dulu.
 KUOTA_SUBSET = {
-    "SODA-inst (T)": 12_000,   # dialog sosial & instruksi naratif
-    "Dolly-v2 (T)": 10_000,    # ditulis manusia, mutu terbaik
-    "wikihow": 8_000,          # instruksi prosedural
+    "SODA-inst (T)": 12_000,   # dialog sosial
+    "Dolly-v2 (T)": 10_000,    # ditulis manusia
+    "wikihow": 8_000,          # prosedural
 }
 
-# Batas per kategori sapaan, supaya satu pola tidak mendominasi hanya karena
-# lebih sering muncul di film.
-# tidak_tahu SENGAJA dibatasi kecil.
+# Batas per kategori sapaan supaya satu pola film tidak mendominasi.
 #
-# Versi pertama memberinya 3.000 slot (7,6% data). Hasilnya model menjawab
-# "aku tidak tahu" untuk 30% prompt uji -- termasuk sapaan biasa seperti
-# "Kamu lagi apa?" dan "Ceritakan sesuatu". Penyebabnya: contoh yang ditambang
-# memasangkan pertanyaan APA PUN dengan jawaban tidak tahu, sehingga model
-# menyimpulkan aturan yang terlalu luas.
+# tidak_tahu: 3.000 slot (7,6%) bikin model jawab "aku tidak tahu" di 30%
+# prompt uji, termasuk sapaan. Contoh tambangnya memasangkan pertanyaan
+# apa pun dengan ketidaktahuan. Pertanyaan ensiklopedis tetap dikarang.
+# Disisakan 600: respons itu sah, cuma tidak boleh jadi default.
 #
-# Dan tujuan awalnya toh tidak tercapai: pertanyaan pengetahuan seperti
-# "Apa ibu kota Zimbabwe?" tetap dikarang, karena contoh yang ditambang
-# berupa pertanyaan percakapan, bukan ensiklopedis. Jadi kategori ini
-# merugikan obrolan biasa tanpa memberi manfaat yang diharapkan.
-#
-# Disisakan sedikit karena "aku tidak tahu" memang respons percakapan
-# yang sah -- hanya tidak boleh jadi jawaban default.
-#
-# ---
-#
-# perkenalan DIMATIKAN (0), bukan sekadar dikecilkan.
-#
-# Kategori ini menambang pasangan "Siapa namamu?" -> "Namaku X" dari subtitle,
-# dan X selalu nama tokoh film. Itu persis pertanyaan yang sekarang harus
-# dijawab dengan persona Wicara, tapi dengan jawaban yang salah.
-#
-# Dengan 1.200 contoh tambang melawan 138 contoh persona tulis tangan,
-# perbandingannya 9:1 dan model akan ikut yang mayoritas. Inilah sebab model
-# menjawab "Namaku Kittan" dan "Aku Daphne" — bukan kebocoran dari pretrain,
-# melainkan data SFT sendiri yang mengajarkannya.
-#
-# Menyisakan sebagian pun tidak ada gunanya: seluruh isi kategori ini
-# mengajarkan perilaku yang justru ingin diganti.
+# perkenalan: 0, bukan dikecilkan. Menambang "Siapa namamu?" -> "Namaku X"
+# (X = tokoh film). 1.200 contoh itu melawan 138 persona. Menyisakan
+# sebagian pun tetap mengajarkan nama yang salah.
 BATAS_KATEGORI = {
     "sapaan": 3000, "kabar": 2000, "perkenalan": 0, "terima_kasih": 1500,
     "perpisahan": 1500, "maaf": 1200, "tidak_tahu": 600,
@@ -109,12 +74,10 @@ def tulis(f, user: str, asisten: str, sumber: str, kategori: str) -> None:
 
 
 def kumpulkan_subtitle(kuota: int, dedup: ExactDedup) -> list[tuple]:
-    """Tambang pasangan sapaan, dengan dedup di tingkat PASANGAN.
+    """Tambang sapaan, dedup di tingkat pasangan.
 
-    Tanpa dedup, "Terima kasih" -> "Sama-sama" muncul ribuan kali: itu memang
-    pertukaran paling umum di film. Untuk SFT yang dibutuhkan RAGAM, bukan
-    frekuensi — model cukup melihat satu pola beberapa kali, dan sisa kuota
-    lebih berguna diisi variasi lain.
+    Tanpa dedup, "Terima kasih" -> "Sama-sama" muncul ribuan kali. SFT
+    butuh ragam, bukan frekuensi.
     """
     path = CLEAN / "opensubtitles.jsonl.gz"
     if not path.exists():
@@ -191,26 +154,16 @@ def kumpulkan_parquet(pola: str, kolom_in: str, kolom_out: str,
 
 
 def kumpulkan_tulis_tangan(path: Path, dedup: ExactDedup) -> list[tuple]:
-    """Baca contoh yang DITULIS TANGAN, bukan ditambang dari korpus.
+    """Contoh tulis tangan, bukan tambang.
 
-    Ini satu-satunya bagian data SFT yang tidak berasal dari data nyata, dan
-    itu disengaja. Dua pola di bawah tidak ada di sumber mana pun, jadi
-    memang harus ditulis:
+    Dua pola yang tidak ada di korpus mana pun:
+        persona  Tidak ada "Saya Wicara" di data. Tanpa ini model mengambil
+                 nama tokoh film.
+        terbuka  Permintaan tanpa topik ("ceritakan sesuatu"). Dialog film
+                 selalu punya konteks adegan.
 
-        persona  Tidak ada korpus yang memuat "Saya Wicara". Tanpa contoh
-                 ini model mengambil nama tokoh film dari subtitle dan
-                 menjawab "Namaku Kittan".
-
-        terbuka  Permintaan tanpa topik ("ceritakan sesuatu", "bosen nih").
-                 Dialog film tidak punya bentuk ini — di film selalu ada
-                 adegan yang memberi konteks, jadi tidak pernah ada giliran
-                 yang benar-benar kosong topik.
-
-    Jumlahnya sengaja kecil, sekitar 1% dari total. Tujuannya menambah dua
-    pola yang hilang, bukan menggeser gaya bahasa yang didapat dari pretrain.
-
-    Berkasnya JSONL polos (bukan gzip) supaya bisa dibaca dan disunting
-    langsung, dan supaya perubahannya terlihat utuh di git diff.
+    Sengaja ~1% dari total. JSONL polos supaya bisa disunting dan terlihat
+    di git diff.
     """
     if not path.exists():
         print(f"    {path.name} tidak ada, dilewati")
@@ -230,9 +183,8 @@ def kumpulkan_tulis_tangan(path: Path, dedup: ExactDedup) -> list[tuple]:
             user = msgs[0]["content"]
             asisten = msgs[1]["content"]
 
-            # Disaring dengan aturan yang sama seperti sumber lain, supaya
-            # berkas yang disunting tangan tidak bisa menyelundupkan contoh
-            # yang tidak akan pernah lolos dari jalur tambang.
+            # Saringan yang sama dengan sumber lain — berkas tangan tidak
+            # boleh menyelundupkan contoh yang ditolak jalur tambang.
             if not layak_instruksi(user, asisten):
                 n_tolak += 1
                 continue
@@ -265,13 +217,10 @@ def main() -> int:
     print("=" * 74)
 
     semua = []
-    # Satu dedup dipakai bersama lintas sumber, supaya contoh yang sama
-    # tidak lolos dua kali lewat jalur berbeda.
+    # Satu ExactDedup lintas sumber.
     dedup = ExactDedup()
 
-    # Tulis tangan dikumpulkan PALING AWAL supaya ia yang memenangkan dedup
-    # kalau ada tabrakan. Contohnya cuma 400 dan tidak tergantikan; contoh
-    # tambang ada puluhan ribu dan mudah dicari penggantinya.
+    # Tulis tangan dulu: 400 contoh tidak tergantikan, tambang mudah diganti.
     print(f"\n  [tulis tangan] {TULIS_TANGAN.name} — persona & permintaan terbuka")
     semua += kumpulkan_tulis_tangan(TULIS_TANGAN, dedup)
 
@@ -290,8 +239,7 @@ def main() -> int:
         str(RAW / "cendol" / "*.parquet"), "input", "output",
         "subset_name", kuota_cendol, "cendol", dedup)
 
-    # Diacak supaya batch tidak berisi satu sumber saja — kalau tidak,
-    # gradient tiap langkah bias ke satu gaya bahasa.
+    # Acak supaya batch tidak satu sumber.
     rng = random.Random(args.seed)
     rng.shuffle(semua)
 

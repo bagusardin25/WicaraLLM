@@ -33,8 +33,8 @@ from src.tokenizer.chat_template import (  # noqa: E402
 CKPT = REPO_ROOT / "checkpoints" / "wicara-56m-chat-v2" / "best.pt"
 TOKENIZER = REPO_ROOT / "data" / "tokenizer" / "wicara-bpe-16k.json"
 
-# Prompt uji yang menyentuh tiap kategori data SFT, plus satu pertanyaan
-# faktual untuk melihat apakah model mengarang atau mengaku tidak tahu.
+# Satu prompt per kategori SFT, plus satu pertanyaan faktual.
+# Empat terakhir: persona & permintaan terbuka (data tulis tangan).
 PROMPT_UJI = [
     "Halo!",
     "Apa kabar?",
@@ -44,9 +44,6 @@ PROMPT_UJI = [
     "Sampai jumpa!",
     "Apa ibu kota Zimbabwe?",
     "Jelaskan cara membuat nasi goreng.",
-    # Empat di bawah menguji data tulis tangan (Fase 6b). Sebelum data itu
-    # ada, "Siapa kamu?" dijawab dengan nama tokoh film dan "Ceritakan
-    # sesuatu" dijawab satu kalimat pendek atau "aku tidak tahu".
     "Siapa kamu?",
     "Kamu bisa apa?",
     "Ceritakan sesuatu.",
@@ -69,8 +66,7 @@ def jawab(model, tok, riwayat, sysprompt, opsi) -> str:
     teks = render(riwayat, add_generation_prompt=True, system_prompt=sysprompt)
     ids = tok.encode(teks).ids
 
-    # Konteks 512 token. Kalau riwayat melebihi, giliran terlama dibuang —
-    # model kecil ini memang tidak dirancang untuk percakapan panjang.
+    # Konteks 512. Giliran terlama dibuang kalau penuh.
     batas = model.cfg.max_seq_len - opsi["max_new_tokens"]
     while len(ids) > batas and len(riwayat) > 1:
         riwayat.pop(0)
@@ -86,9 +82,7 @@ def main() -> int:
     p = argparse.ArgumentParser()
     p.add_argument("--ckpt", default=str(CKPT))
     p.add_argument("--tokenizer", default=str(TOKENIZER))
-    # 100 token hanya cukup untuk ~426 karakter (4,26 char/token), dan itu
-    # memotong jawaban panjang di tengah kalimat. Data wikihow saja median
-    # jawabannya 632 karakter. 160 memberi ruang ~680 karakter.
+    # 100 token ~426 char, median wikihow 632 char. 160 ~680 char.
     p.add_argument("--max-new-tokens", type=int, default=160)
     p.add_argument("--temperature", type=float, default=0.7)
     p.add_argument("--top-k", type=int, default=40)

@@ -1,18 +1,7 @@
-"""Dataset SFT: ubah percakapan jadi (input_ids, labels) dengan loss masking.
+"""Dataset SFT: (input_ids, labels) dengan loss hanya di token asisten.
 
-INTI FASE 6 ADA DI SINI, dan ini juga titik paling rawan.
-
-Loss HANYA dihitung pada token jawaban asisten. Token pertanyaan user diberi
-label -100 supaya diabaikan `F.cross_entropy(ignore_index=-100)`.
-
-Kalau masking-nya salah dan loss ikut dihitung di teks user, model belajar
-MENIRU cara user bertanya alih-alih menjawabnya. Yang menakutkan: training
-tetap terlihat mulus, loss tetap turun, angkanya tetap wajar. Kesalahannya
-baru ketahuan saat model dipakai — dan saat itu 1 jam training sudah terbuang.
-
-Karena itu modul ini menyediakan `periksa_masking()`: mendekode ulang posisi
-yang loss-nya dihitung, dan membandingkannya dengan teks asisten yang
-seharusnya. Bukti, bukan asumsi.
+Token non-asisten berlabel -100. `periksa_masking()` mendekode posisi yang
+dilatih — kalau teks user muncul di situ, masking bocor.
 """
 
 import gzip
@@ -39,18 +28,11 @@ def encode_example(
     max_len: int = 512,
     system_prompt: str | None = None,
 ) -> tuple[list[int], list[int]] | None:
-    """Ubah satu percakapan jadi (input_ids, labels).
+    """Satu percakapan -> (input_ids, labels). None kalau kebanyakan atau
+    tidak ada token asisten tersisa.
 
-    Returns None kalau hasilnya terlalu panjang atau tidak ada token asisten
-    yang tersisa untuk dilatih.
-
-    Pergeseran satu posisi:
         input_ids = token[:-1]
-        labels    = token[1:], dengan -100 di posisi non-asisten
-
-    Model memprediksi token t+1 saat melihat token t, jadi label di posisi t
-    adalah token t+1. Loss dipertahankan hanya kalau token t+1 itu milik
-    jawaban asisten.
+        labels    = token[1:], -100 di posisi non-asisten
     """
     teks = render(messages, system_prompt=system_prompt)
     spans = assistant_spans(messages, system_prompt=system_prompt)
@@ -61,11 +43,8 @@ def encode_example(
     if len(ids) < 2 or len(ids) > max_len + 1:
         return None
 
-    # Tandai token yang termasuk jawaban asisten.
-    #
-    # Titik TENGAH offset dipakai, bukan awalnya. Token byte-level bisa
-    # mencakup spasi sebelum kata, sehingga awalnya jatuh tepat di batas span
-    # dan menghasilkan penilaian yang meleset satu token.
+    # Titik tengah offset, bukan awalnya. Token byte-level bisa mencakup
+    # spasi sebelum kata, jadi awalnya jatuh tepat di batas span.
     milik_asisten = np.zeros(len(ids), dtype=bool)
     for i, (a, b) in enumerate(offsets):
         if b <= a:
@@ -90,11 +69,7 @@ def encode_example(
 
 def periksa_masking(tokenizer, messages: list[Message],
                     system_prompt: str | None = None) -> dict:
-    """Bukti bahwa masking benar: dekode ulang posisi yang dilatih.
-
-    Mengembalikan teks yang benar-benar dihitung loss-nya. Kalau di dalamnya
-    ada potongan pertanyaan user, berarti masking bocor.
-    """
+    """Dekode posisi yang dilatih. Kalau teks user muncul di situ, masking bocor."""
     hasil = encode_example(tokenizer, messages, max_len=10_000,
                            system_prompt=system_prompt)
     if hasil is None:
@@ -111,11 +86,8 @@ def periksa_masking(tokenizer, messages: list[Message],
 
 
 class SFTDataset:
-    """Percakapan SFT yang sudah ter-encode, siap dibatch.
-
-    Berbeda dari TokenDataset (pretrain) yang membaca larik datar: di sini
-    tiap contoh berdiri sendiri dan panjangnya berbeda-beda, jadi perlu
-    padding per batch.
+    """Percakapan SFT ter-encode. Bukan larik datar seperti TokenDataset;
+    panjang tiap contoh berbeda, jadi padding per batch.
     """
 
     def __init__(self, path: str | Path, tokenizer, max_len: int = 512,
@@ -177,18 +149,10 @@ class SFTDataset:
     def get_batch(
         self, batch_size: int, device, generator: torch.Generator | None = None
     ) -> tuple[torch.Tensor, torch.Tensor]:
-        """Satu batch, di-padding ke contoh terpanjang di dalam batch itu.
+        """Satu batch, padding ke contoh terpanjang di batch (bukan max_len).
 
-        Padding hanya sampai contoh terpanjang di batch (bukan max_len),
-        supaya tidak membuang komputasi untuk token pad yang toh diabaikan.
-
-        Args:
-            generator: kalau diberikan, indeks diambil acak memakai generator
-                ini (dipakai evaluasi). Karena pemanggil membuat generator
-                berbenih tetap di tiap evaluasi, batch validasinya identik
-                setiap kali dan angkanya bisa dibandingkan lintas langkah.
-                Kalau None, contoh diambil berurutan dari putaran epoch yang
-                urutannya sudah diacak — menjamin setiap contoh terlihat.
+        generator: indeks acak dari generator itu (evaluasi, biar val
+        identik tiap langkah). Tanpa itu, urutan epoch yang sudah diacak.
         """
         if generator is not None:
             idx = torch.randint(len(self.contoh), (batch_size,),

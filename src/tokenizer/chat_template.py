@@ -99,13 +99,9 @@ def render(
 
 def assistant_spans(messages: list[Message], system_prompt: str | None = None
                     ) -> list[tuple[int, int]]:
-    """Rentang karakter (start, end) dari isi tiap giliran asisten.
+    """Rentang karakter (start, end) tiap giliran asisten, termasuk <|end|>.
 
-    Dipakai Fase 6 untuk loss masking: loss HANYA dihitung pada token asisten,
-    tidak pada prompt user. Ini bug paling umum di SFT — kalau loss ikut dihitung
-    di teks user, model belajar meniru user dan bukan menjawabnya.
-
-    Rentang mencakup <|end|> penutup, supaya model belajar KAPAN harus berhenti.
+    Dipakai loss masking SFT. <|end|> ikut supaya model belajar berhenti.
     """
     spans: list[tuple[int, int]] = []
     pos = len(BOS)

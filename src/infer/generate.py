@@ -49,9 +49,8 @@ def generate(
     model.eval()
     device = torch.device(device)
 
-    # Untuk model chat, <|end|> menutup satu giliran dan itulah penanda
-    # berhenti yang sesungguhnya. Tanpa memasukkannya, model melewati batas
-    # giliran dan mengarang percakapan lanjutan sendiri.
+    # <|end|> menutup giliran chat. Tanpa itu model lanjut mengarang
+    # percakapan sendiri.
     berhenti = set(stop_ids or ())
     if stop_at_eos:
         berhenti.add(EOS_ID)

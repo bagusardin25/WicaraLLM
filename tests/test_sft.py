@@ -1,14 +1,7 @@
-"""Uji SFT — Fase 6.
+"""Uji SFT.
 
-Fokusnya satu: LOSS MASKING.
-
-Kalau masking salah dan loss ikut dihitung di teks user, model belajar meniru
-cara user bertanya alih-alih menjawabnya. Bug ini senyap — training tetap
-mulus, loss tetap turun, angkanya tetap wajar. Baru ketahuan saat model
-dipakai, setelah waktu training terbuang.
-
-Karena itu ujinya tidak memeriksa jumlah token, melainkan MENDEKODE ULANG
-posisi yang dilatih dan membandingkan isinya dengan teks asisten.
+Fokus: loss masking. Kalau bocor ke teks user, training tetap terlihat
+mulus. Ujinya mendekode posisi yang dilatih, bukan menghitung token.
 """
 
 import ast
@@ -54,13 +47,11 @@ PERCAKAPAN = [
 ]
 
 
-# ========================== inti: loss masking ===========================
+# ============================== loss masking =============================
 
 def test_hanya_teks_asisten_yang_dilatih(tok):
-    """UJI PALING PENTING DI FASE 6.
-
-    Posisi yang loss-nya dihitung, kalau didekode ulang, harus PERSIS teks
-    asisten — tidak boleh ada potongan pertanyaan user di dalamnya.
+    """Posisi yang dilatih, didekode ulang, harus teks asisten — bukan user
+    atau system prompt.
     """
     r = periksa_masking(tok, PERCAKAPAN, DEFAULT_SYSTEM_PROMPT)
     dilatih = r["dilatih"]
@@ -71,18 +62,13 @@ def test_hanya_teks_asisten_yang_dilatih(tok):
 
 
 def test_penanda_akhir_ikut_dilatih(tok):
-    """<|end|> harus ikut dihitung loss-nya.
-
-    Tanpa itu model tidak pernah belajar KAPAN berhenti, dan akan terus
-    menulis sampai batas panjang — termasuk mengarang giliran user.
-    """
+    """<|end|> harus ikut dilatih, kalau tidak model tidak belajar berhenti."""
     r = periksa_masking(tok, PERCAKAPAN, DEFAULT_SYSTEM_PROMPT)
     assert "<|end|>" in r["dilatih"]
 
 
 def test_semua_giliran_asisten_dilatih(tok):
-    """Percakapan banyak giliran: SEMUA jawaban asisten harus dilatih,
-    bukan hanya yang terakhir."""
+    """Semua giliran asisten dilatih, bukan hanya yang terakhir."""
     msgs = [
         Message("user", "Halo, apa kabar hari ini?"),
         Message("assistant", "Baik, terima kasih sudah bertanya kepada saya."),
@@ -96,18 +82,13 @@ def test_semua_giliran_asisten_dilatih(tok):
 
 
 def test_sebagian_besar_token_diabaikan(tok):
-    """Rasio token yang dilatih harus wajar — sebagian besar percakapan
-    adalah prompt, jadi porsi yang dilatih memang minoritas."""
+    """Porsi yang dilatih minoritas: sebagian besar percakapan adalah prompt."""
     r = periksa_masking(tok, PERCAKAPAN, DEFAULT_SYSTEM_PROMPT)
     assert 0.1 < r["rasio"] < 0.7, f"rasio {r['rasio']:.1%} mencurigakan"
 
 
 def test_label_digeser_satu_posisi(tok):
-    """labels[t] harus token ke-(t+1), bukan token ke-t.
-
-    Kalau tidak digeser, model belajar menyalin masukan alih-alih
-    memprediksi kelanjutannya.
-    """
+    """labels[t] == token[t+1], bukan token[t]."""
     teks = render(PERCAKAPAN, system_prompt=DEFAULT_SYSTEM_PROMPT)
     ids = tok.encode(teks).ids
     input_ids, labels = encode_example(tok, PERCAKAPAN, 10_000,
@@ -158,8 +139,7 @@ def test_dataset_memuat_dan_membatch(data_sft, tok):
 
 
 def test_padding_diabaikan_di_loss(data_sft, tok):
-    """Posisi padding WAJIB berlabel -100. Kalau tidak, model belajar
-    memprediksi token pad — mencemari seluruh training."""
+    """Posisi pad wajib -100."""
     ds = SFTDataset(data_sft, tok, max_len=256)
     x, y = ds.get_batch(8, "cpu")
     pad = x == PAD_ID
@@ -167,7 +147,7 @@ def test_padding_diabaikan_di_loss(data_sft, tok):
 
 
 def test_setiap_batch_punya_token_untuk_dilatih(data_sft, tok):
-    """Batch tanpa satu pun label valid menghasilkan loss NaN."""
+    """Batch tanpa label valid -> loss NaN."""
     ds = SFTDataset(data_sft, tok, max_len=256)
     for _ in range(5):
         _, y = ds.get_batch(4, "cpu")
@@ -201,10 +181,7 @@ def test_hitungan_token_dilatih_masuk_akal(data_sft, tok):
 # ==================== penyaringan & penambangan data =====================
 
 def test_pasangan_subtitle_butuh_kedua_sisi_cocok():
-    """Versi pertama aturan ini hanya mencocokkan baris pembuka, dan
-    menghasilkan pasangan tak nyambung seperti
-    "Terima kasih." -> "Jangan hubungi kebun binatang."
-    """
+    """Kedua sisi harus cocok. Versi pertama cuma mencocokkan pembuka."""
     blok = "Terima kasih.\nJangan hubungi kebun binatang."
     assert tambang_pasangan_subtitle(blok) == []
 
@@ -227,35 +204,25 @@ def test_kategori_pasangan_dikenali(user, asisten, kategori):
 
 
 def test_nilai_kosong_yang_bocor_ditolak():
-    """Cendol punya banyak baris dengan keluaran harfiah "nan" — nilai
-    kosong yang bocor jadi teks."""
+    """Cendol: keluaran harfiah "nan" lolos ke teks."""
     assert not layak_instruksi("Silakan ciptakan puisi yang indah", "nan")
     assert not layak_instruksi("Tulis sesuatu", "")
 
 
 def test_pilihan_ganda_ditolak():
-    """Soal pilihan ganda mengajarkan format jawaban yang tidak
-    berguna untuk percakapan."""
+    """Pilihan ganda tidak lolos saringan."""
     assert not layak_instruksi(
         "Manakah yang benar? Pilihan: - A: ya - B: tidak", "A")
 
 
-# ==========================================================================
-# Data tulis tangan (Fase 6b)
-#
-# 400 contoh di data/sft/tulis_tangan.jsonl adalah satu-satunya bagian data
-# SFT yang tidak ditambang. Karena berkas itu disunting tangan, ia bisa rusak
-# tanpa ada yang menahan — JSON salah, contoh kembar, atau jawaban yang
-# pelan-pelan memendek sampai tujuan aslinya hilang. Uji di bawah menahannya.
-# ==========================================================================
+# Data tulis tangan. Disunting tangan, jadi bisa rusak tanpa ada yang
+# menahan — JSON salah, kembar, atau jawaban yang pelan-pelan memendek.
 
 REPO = Path(__file__).resolve().parent.parent
 TULIS_TANGAN = REPO / "data" / "sft" / "tulis_tangan.jsonl"
 
-# Penyebutan nama DIRI, orang pertama. Sengaja tidak mencakup "namanya",
-# yang di kategori terbuka muncul sah-sah saja ("kucing yang dipanggil
-# namanya"). Yang dijaga di sini cuma satu: kalau Wicara menyebut nama
-# dirinya sendiri, namanya harus Wicara.
+# Nama diri orang pertama. "namanya" tidak ikut — di kategori terbuka
+# muncul sah ("kucing yang dipanggil namanya").
 POLA_NAMA_DIRI = re.compile(r"\bnama(ku|\s+(saya|aku))\b", re.IGNORECASE)
 
 
@@ -268,11 +235,9 @@ def tulis_tangan():
 
 
 def _konstanta_skrip(nama: str):
-    """Ambil konstanta dari build_sft_data.py TANPA mengimpornya.
+    """Baca konstanta build_sft_data.py lewat AST.
 
-    Skrip itu punya efek samping saat diimpor (sys.stdout.reconfigure dan
-    impor pyarrow), yang tidak diinginkan di dalam pytest. Membacanya sebagai
-    AST memberi nilai yang sama tanpa menjalankan apa pun.
+    Jangan diimpor: skrip itu punya efek samping (stdout.reconfigure, pyarrow).
     """
     sumber = (REPO / "scripts" / "build_sft_data.py").read_text(encoding="utf-8")
     for simpul in ast.parse(sumber).body:
@@ -295,29 +260,21 @@ def test_tulis_tangan_bentuknya_benar(tulis_tangan):
 
 
 def test_tulis_tangan_lolos_saringan_yang_sama(tulis_tangan):
-    """Berkas yang disunting tangan tidak boleh menyelundupkan contoh yang
-    tidak akan pernah lolos dari jalur tambang."""
+    """Contoh tangan harus lolos saringan yang sama dengan jalur tambang."""
     for d in tulis_tangan:
         u, a = d["messages"][0]["content"], d["messages"][1]["content"]
         assert layak_instruksi(u, a), f"ditolak saringan: {u!r}"
 
 
 def test_tulis_tangan_tidak_ada_kembar(tulis_tangan):
-    """Prompt kembar membuat satu jawaban dilatih dua kali dan menggeser
-    bobot kategori tanpa terlihat di hitungan."""
+    """Prompt kembar menggeser bobot kategori tanpa terlihat di hitungan."""
     prompt = [d["messages"][0]["content"].lower() for d in tulis_tangan]
     kembar = {p for p in prompt if prompt.count(p) > 1}
     assert not kembar, f"prompt kembar: {sorted(kembar)[:5]}"
 
 
 def test_persona_tidak_pernah_memakai_nama_lain(tulis_tangan):
-    """Inti dari data persona.
-
-    Sebelum ada berkas ini, model menjawab "Namaku Kittan" — nama tokoh film
-    yang terbawa dari subtitle. Kalau ada satu saja contoh di sini yang
-    mengaku bernama selain Wicara, contoh itu mengajarkan kembali kebiasaan
-    yang justru sedang diperbaiki.
-    """
+    """Jawaban persona/batas yang menyebut nama diri harus Wicara."""
     for d in tulis_tangan:
         if d["kategori"] not in {"persona", "batas"}:
             continue
@@ -332,10 +289,8 @@ def test_persona_benar_benar_mengajarkan_nama(tulis_tangan):
 
 
 def test_jawaban_terbuka_memang_panjang(tulis_tangan):
-    """Seluruh alasan kategori `terbuka` ada adalah panjang jawabannya.
-
-    Kalau median ini turun, datanya sudah kehilangan tujuannya walaupun
-    jumlah contohnya tetap.
+    """Median jawaban `terbuka` harus tetap panjang. Kalau turun, kategori
+    ini sudah kehilangan tujuannya.
     """
     p = [len(d["messages"][1]["content"])
          for d in tulis_tangan if d["kategori"] == "terbuka"]
@@ -344,16 +299,12 @@ def test_jawaban_terbuka_memang_panjang(tulis_tangan):
 
 
 def test_jawaban_muat_di_anggaran_token_chat(tulis_tangan):
-    """chat.py membangkitkan paling banyak 160 token (~680 karakter pada
-    4,26 char/token). Jawaban yang lebih panjang akan terpotong di tengah
-    kalimat saat dipakai, dan model belajar bentuk yang tak pernah utuh."""
+    """chat.py default 160 token (~680 char). Lebih panjang dari ini terpotong."""
     for d in tulis_tangan:
         a = d["messages"][1]["content"]
         assert len(a) <= 500, f"terlalu panjang ({len(a)}): {a[:60]}"
 
 
 def test_kuota_perkenalan_tetap_nol():
-    """Kategori `perkenalan` menambang "Siapa namamu?" -> "Namaku X" dengan X
-    nama tokoh film. Itu 1.200 contoh yang melawan 138 contoh persona.
-    Menghidupkannya kembali akan membatalkan seluruh data persona."""
+    """perkenalan harus tetap 0. Menghidupkannya membatalkan data persona."""
     assert _konstanta_skrip("BATAS_KATEGORI")["perkenalan"] == 0
