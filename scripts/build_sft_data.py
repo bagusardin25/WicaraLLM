@@ -40,6 +40,10 @@ TULIS_TANGAN = REPO_ROOT / "data" / "sft" / "tulis_tangan.jsonl"
 # Kuota sengaja kecil. SFT berlebihan menimpa pretrain.
 KUOTA_SUBTITLE = 16_000
 
+# Pengulangan contoh persona. Lihat kumpulkan_tulis_tangan().
+ULANG_KATEGORI = {"persona", "batas"}
+ULANG_PERSONA = 2
+
 # Per subset, bukan per sumber. Kuota tunggal untuk seluruh Aya membuat
 # Dolly-v2 tidak kebagian — kuota habis di SODA-inst yang kebetulan dibaca dulu.
 KUOTA_SUBSET = {
@@ -195,8 +199,17 @@ def kumpulkan_tulis_tangan(path: Path, dedup: ExactDedup) -> list[tuple]:
             per_kategori[d["kategori"]] += 1
             hasil.append((user, asisten, "tulis_tangan", d["kategori"]))
 
+    # v3 punya 161 contoh persona+batas (0,4%) dan tetap menjawab
+    # "Aku Kawis!" — prior nama dari subtitle menang. Diulang supaya
+    # porsinya di atas tidak_tahu (600). Mengulang aman di sini: menghafal
+    # "Saya Wicara" memang tujuannya, beda dari kategori lain.
+    ulang = [h for h in hasil if h[3] in ULANG_KATEGORI]
+    hasil += ulang * (ULANG_PERSONA - 1)
+
     for kat, n in per_kategori.most_common():
-        print(f"      {n:>6,}  {kat}")
+        n_akhir = n * ULANG_PERSONA if kat in ULANG_KATEGORI else n
+        tanda = f"  (x{ULANG_PERSONA})" if kat in ULANG_KATEGORI else ""
+        print(f"      {n_akhir:>6,}  {kat}{tanda}")
     if n_dup or n_tolak:
         print(f"      {n_dup:>6,}  (duplikat)   {n_tolak:,} ditolak saringan")
     return hasil

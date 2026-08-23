@@ -249,7 +249,7 @@ def _konstanta_skrip(nama: str):
 
 
 def test_tulis_tangan_bentuknya_benar(tulis_tangan):
-    assert len(tulis_tangan) >= 380, "contoh berkurang banyak dari 400"
+    assert len(tulis_tangan) >= 560, "contoh berkurang banyak dari 591"
     for d in tulis_tangan:
         msgs = d["messages"]
         assert len(msgs) == 2
@@ -308,3 +308,15 @@ def test_jawaban_muat_di_anggaran_token_chat(tulis_tangan):
 def test_kuota_perkenalan_tetap_nol():
     """perkenalan harus tetap 0. Menghidupkannya membatalkan data persona."""
     assert _konstanta_skrip("BATAS_KATEGORI")["perkenalan"] == 0
+
+
+def test_persona_mengalahkan_tidak_tahu(tulis_tangan):
+    """Pelajaran v3: 161 persona kalah dari 600 tidak_tahu, dan model
+    menjawab "Saya tidak tahu" untuk "Kamu bisa apa?". Kalau perbandingan
+    itu berbalik lagi, persona tenggelam lagi.
+    """
+    ulang_kat = _konstanta_skrip("ULANG_KATEGORI")
+    n = sum(1 for d in tulis_tangan if d["kategori"] in ulang_kat)
+    n *= _konstanta_skrip("ULANG_PERSONA")
+    tidak_tahu = _konstanta_skrip("BATAS_KATEGORI")["tidak_tahu"]
+    assert n > tidak_tahu, f"persona {n} <= tidak_tahu {tidak_tahu}"
