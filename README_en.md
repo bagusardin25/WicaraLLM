@@ -30,12 +30,30 @@ The goal is to learn how LLMs work completely by building one ourselves, rather 
 | 3 | Model architecture | ✅ Done |
 | 3b | Sanity check | ✅ Done |
 | 4 | Training loop | ✅ Done |
-| 5 | Pretrain | ⬜ Ready to run — see [guide](notes/04-panduan-pretrain.md) |
-| 6 | Conversational SFT | ⬜ |
+| 5 | Pretrain | ✅ Done — val loss **3.05** (ppl 21.2) |
+| 6 | Conversational SFT | ⬜ Next |
 | 7 | Inference engine & CLI | ⬜ |
 | 8 | Evaluation | ⬜ |
 
-**149 tests passed.** The model, trainer, checkpoints, corpus, and tokenizer are ready. `train.bin` contains **1,115,298,306 tokens** — pretraining is ready to run.
+**149 tests passed.** `wicara-56m-base` is fully trained: 17,010 steps over
+1.11 billion tokens, one epoch with no repetition, reaching **val loss 3.05**
+(perplexity 21.2) in 11.1 hours on an RTX 4050. Details in
+[`notes/05-fase-5-pretrain.md`](notes/05-fase-5-pretrain.md).
+
+The model already produces grammatical Indonesian and shifts register to match
+context, but it still **continues text** rather than answering. Answering
+comes from SFT in Phase 6.
+
+Sample output at step 17,000 for the prompt `"Halo, apa kabar?"`:
+
+```
+Halo, ini aku, ada yang bisa kubantu?     (Hello, it's me, can I help you?)
+Aku segera ke sana.                       (I'll be right there.)
+Halo, ini aku Anna.                       (Hello, it's me, Anna.)
+```
+
+That emerged from **pretraining alone, without any SFT** — absorbed from
+thousands of phone conversations in the subtitle corpus.
 
 ---
 

@@ -4,7 +4,7 @@ import torch
 import torch.nn.functional as F
 
 from src.model.transformer import MiniLLM
-from src.tokenizer.chat_template import BOS_ID, EOS_ID
+from src.tokenizer.chat_template import BOS_ID, END_TURN_ID, EOS_ID
 
 
 def _saring_logits(
@@ -30,6 +30,7 @@ def generate(
     model: MiniLLM,
     tokenizer,
     prompt: str = "",
+    prompt_ids: list[int] | None = None,
     *,
     max_new_tokens: int = 120,
     temperature: float = 0.8,
@@ -37,6 +38,7 @@ def generate(
     top_p: float = 0.9,
     repetition_penalty: float = 1.1,
     stop_at_eos: bool = True,
+    stop_ids: tuple[int, ...] | None = None,
     device: str | torch.device = "cuda",
     seed: int | None = None,
 ) -> str:
@@ -47,7 +49,17 @@ def generate(
     model.eval()
     device = torch.device(device)
 
-    ids = [BOS_ID] + (tokenizer.encode(prompt).ids if prompt else [])
+    # Untuk model chat, <|end|> menutup satu giliran dan itulah penanda
+    # berhenti yang sesungguhnya. Tanpa memasukkannya, model melewati batas
+    # giliran dan mengarang percakapan lanjutan sendiri.
+    berhenti = set(stop_ids or ())
+    if stop_at_eos:
+        berhenti.add(EOS_ID)
+
+    if prompt_ids is not None:
+        ids = list(prompt_ids)
+    else:
+        ids = [BOS_ID] + (tokenizer.encode(prompt).ids if prompt else [])
     idx = torch.tensor([ids], dtype=torch.long, device=device)
 
     caches = model.make_caches(1, model.cfg.max_seq_len)
@@ -77,7 +89,7 @@ def generate(
             logit = _saring_logits(logit / temperature, top_k, top_p)
             nxt = int(torch.multinomial(F.softmax(logit, dim=-1), 1))
 
-        if stop_at_eos and nxt == EOS_ID:
+        if nxt in berhenti:
             break
 
         keluar.append(nxt)

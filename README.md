@@ -33,13 +33,32 @@ percakapan dasar bahasa Indonesia ("halo", "apa kabar?").
 | 3 | Arsitektur model | ✅ Selesai |
 | 3b | Uji sanity | ✅ Selesai |
 | 4 | Training loop | ✅ Selesai |
-| 5 | Pretrain | ⬜ Siap dijalankan — lihat [panduan](notes/04-panduan-pretrain.md) |
-| 6 | SFT percakapan | ⬜ |
-| 7 | Inference engine & CLI | ⬜ |
+| 5 | Pretrain | ✅ Selesai — val loss **3,05** (ppl 21,2) |
+| 6 | SFT percakapan | ✅ Selesai — val loss **1,37** |
+| 7 | Inference engine & CLI | 🟨 `chat.py` & `generate.py` jalan |
 | 8 | Evaluasi | ⬜ |
 
-**149 uji lolos.** Model, trainer, checkpoint, korpus, dan tokenizer sudah
-siap. `train.bin` berisi **1.115.298.306 token** — pretrain tinggal dijalankan.
+**170 uji lolos.** `wicara-56m-base` sudah dilatih penuh: 17.010 langkah,
+1,11 miliar token, 1 epoch tanpa pengulangan, **val loss 3,05** (perplexity
+21,2) dalam 11,1 jam di RTX 4050. Rinciannya di
+[`notes/05-fase-5-pretrain.md`](notes/05-fase-5-pretrain.md).
+
+`wicara-56m-chat` sudah melewati SFT dan kini **menjawab**, bukan melanjutkan
+teks:
+
+| Anda | Wicara |
+|---|---|
+| Halo! | Halo, Tn. |
+| Apa kabar? | Baik, baik. |
+| Siapa namamu? | Aku tidak punya nama. |
+| Terima kasih banyak! | Tidak masalah, tidak masalah. |
+| Sampai jumpa! | Sampai jumpa! |
+
+```bash
+.venv\Scripts\python.exe scripts\chat.py
+```
+
+Rinciannya di [`notes/06-fase-6-sft.md`](notes/06-fase-6-sft.md).
 
 ---
 
@@ -97,12 +116,45 @@ Semua angka di bawah diukur langsung di RTX 4050 Laptop, bukan diperkirakan:
 | **`56m`** | **56,0M** | **20.733** | **2,96 GB** | 22,5% | **17,4 jam** |
 | `88m` | 88,1M | 14.276 | 4,10 GB | 25,7% | 25,3 jam |
 
+Catatan: angka-angka di atas dari benchmark sintetis dan ternyata
+**konservatif**. Training `56m` yang sungguhan mencapai **28.017 tok/detik**
+dan selesai dalam **11,1 jam**, bukan 17,4.
+
 Untuk anggaran compute ~3,6×10¹⁷ FLOPs (≈17 jam di GPU ini), ukuran
 Chinchilla-optimal adalah √(C/120) ≈ **55 juta parameter**. Pada anggaran waktu
 yang sama, 32M jadi kelewat latih (79 token/parameter) dan 88M jadi kurang
 latih (10 token/parameter). VRAM baru menjadi pengikat di sekitar 100M.
 
 Config `7m` dan `19m` dipakai untuk iterasi cepat dan uji, bukan untuk rilis.
+
+### Hasil pretrain
+
+| | Nilai |
+|---|---|
+| Val loss | **3,0505** (perplexity 21,2) |
+| Train loss | 2,937 — jarak ke val hanya 0,12, tanpa overfitting |
+| Langkah | 17.010 (1 epoch penuh, cakupan 100%) |
+| Throughput | 28.017 token/detik |
+| VRAM | 3,12 GB dari 6,00 GB |
+| Durasi | 11,1 jam |
+
+Contoh keluaran pada langkah 17.000, prompt `"Halo, apa kabar?"`:
+
+```
+Halo, ini aku, ada yang bisa kubantu?
+Aku segera ke sana.
+Halo, ini aku Anna.
+```
+
+Kalimat itu muncul dari **pretraining saja, tanpa SFT** — diserap dari ribuan
+percakapan telepon di korpus subtitle.
+
+Model juga menyesuaikan ragam bahasa dengan prompt: sapaan memicu *aku/kau*,
+pertanyaan formal memicu *Saya/Anda*, dan `"Menurut saya,"` memicu argumen
+bertahap dengan penanda *Pertama/Kedua*.
+
+Batasnya juga terkonfirmasi: `"Indonesia adalah negara"` dilanjutkan menjadi
+`"...yang paling maju di dunia."` — gramatikal sempurna, faktual salah total.
 
 ---
 
@@ -199,14 +251,14 @@ Perintah lain yang berguna:
 ```
 src/
   model/       rmsnorm · rope · attention (GQA+KV-cache) · ffn · transformer
-  data/        sources · readers · clean · dedup
+  data/        sources · readers · clean · dedup · sft · sft_dataset
   train/       trainer · data (memmap, epoch penuh) · lr_schedule · checkpoint
   infer/       generate (KV-cache, top-k/top-p, repetition penalty)
   tokenizer/   bpe · chat_template
 scripts/       check_env · download_corpus · verify_corpus · clean_corpus ·
                demo_cleaning · train_tokenizer · pack_tokens · bench_model ·
-               train · generate
-tests/         149 uji
+               train · train_sft · build_sft_data · generate · chat
+tests/         170 uji
 notes/         catatan per fase + glosarium istilah LLM (PDF)
 ```
 
@@ -232,6 +284,11 @@ kernel `mem_efficient` juga tidak membentuk matriks seq×seq di memori.
 **memmap mengunci berkas di Windows.** Berkas yang sedang di-*map* tidak bisa
 ditimpa, sehingga pipeline data gagal selama masih ada `TokenDataset` hidup.
 Tidak terjadi di Linux, jadi mudah lolos.
+
+**Jalankan Python lewat PowerShell, bukan Git Bash.** Setelah run panjang,
+`import torch` bisa gagal di MSYS2 bash dengan `WinError 126 ... atau salah
+satu dependensinya`, padahal normal di PowerShell — PATH MSYS2 menaungi DLL
+sistem.
 
 **Dedup di level yang salah lebih merusak daripada tidak dedup.** Dedup per
 baris pada subtitle membuang 39,7% data — tapi yang terbuang adalah frasa

@@ -18,7 +18,7 @@ from src.train.checkpoint import (
 from src.train.config import TrainConfig
 from src.train.data import TokenDataset
 from src.train.lr_schedule import get_lr
-from src.tokenizer.chat_template import BOS_ID, EOS_ID
+from src.tokenizer.chat_template import BOS_ID, END_TURN_ID, EOS_ID
 
 GB = 1024**3
 
@@ -29,11 +29,18 @@ class Trainer:
         model_cfg: ModelConfig,
         train_cfg: TrainConfig,
         tokenizer=None,
+        train_data=None,
+        val_data=None,
+        chat_mode: bool = False,
     ):
         self.mcfg = model_cfg
         self.tcfg = train_cfg
         # Tokenizer hanya dipakai untuk sample_probe.
         self.tokenizer = tokenizer
+        # chat_mode mengubah sample_probe agar memakai chat template, supaya
+        # yang terlihat di samples.txt adalah jawaban asisten sungguhan —
+        # bukan lanjutan teks seperti saat pretrain.
+        self.chat_mode = chat_mode
 
         self.device = torch.device(train_cfg.device)
         torch.manual_seed(train_cfg.seed)
@@ -49,9 +56,13 @@ class Trainer:
         self.model = MiniLLM(model_cfg).to(self.device)
         self.optimizer = self._build_optimizer()
 
-        self.train_data = TokenDataset(train_cfg.train_bin,
-                                       model_cfg.max_seq_len, seed=train_cfg.seed)
-        self.val_data = TokenDataset(train_cfg.val_bin, model_cfg.max_seq_len)
+        # Dataset bisa disuntikkan dari luar (dipakai SFT, yang memakai
+        # SFTDataset alih-alih TokenDataset). Kalau tidak, pakai memmap
+        # pretrain seperti biasa.
+        self.train_data = train_data or TokenDataset(
+            train_cfg.train_bin, model_cfg.max_seq_len, seed=train_cfg.seed)
+        self.val_data = val_data or TokenDataset(
+            train_cfg.val_bin, model_cfg.max_seq_len)
 
         self.total_steps = train_cfg.total_steps(model_cfg.max_seq_len)
         self.warmup_steps = train_cfg.warmup_steps(model_cfg.max_seq_len)
@@ -184,7 +195,16 @@ class Trainer:
         potongan = []
 
         for prompt_txt in prompts:
-            if self.tokenizer is not None and prompt_txt:
+            if self.chat_mode and self.tokenizer is not None and prompt_txt:
+                # Prompt dibungkus chat template dan diakhiri <|assistant|>,
+                # sehingga yang terlihat adalah JAWABAN model — bukan
+                # lanjutan teks seperti saat pretrain.
+                from src.tokenizer.chat_template import Message, render
+
+                teks = render([Message("user", prompt_txt)],
+                              add_generation_prompt=True)
+                awal = self.tokenizer.encode(teks).ids
+            elif self.tokenizer is not None and prompt_txt:
                 awal = [BOS_ID] + self.tokenizer.encode(prompt_txt).ids
             else:
                 awal = [BOS_ID]
@@ -208,7 +228,10 @@ class Trainer:
 
                 nxt = torch.multinomial(torch.softmax(logit, dim=-1), num_samples=1)
                 tok = int(nxt.item())
-                if tok == EOS_ID:
+                # Model chat berhenti di <|end|> (akhir giliran), bukan hanya
+                # di <|eos|> (akhir dokumen). Tanpa ini keluarannya melewati
+                # batas giliran dan model mengarang percakapan lanjutan.
+                if tok == EOS_ID or (self.chat_mode and tok == END_TURN_ID):
                     break
                 keluar.append(tok)
                 idx = nxt
@@ -344,12 +367,24 @@ class Trainer:
             "best_val_loss": self.best_val_loss,
         }
 
+    def _ringkas_data(self, ds) -> str:
+        """Deskripsi dataset yang cocok untuk pretrain maupun SFT.
+
+        TokenDataset berisi larik token datar; SFTDataset berisi contoh
+        percakapan terpisah. Keduanya dilaporkan dengan satuannya sendiri
+        alih-alih memaksakan satu bentuk.
+        """
+        if hasattr(ds, "n_tokens"):
+            return (f"{ds.n_tokens / 1e6:.1f}M token "
+                    f"({ds.n_chunks:,} potongan)")
+        return (f"{len(ds):,} percakapan "
+                f"({ds.n_token_dilatih / 1e3:.0f}K token dilatih)")
+
     def _print_header(self, target: int) -> None:
         print(f"  Model            : {self.mcfg.name} "
               f"({self.mcfg.n_params / 1e6:.1f}M parameter)")
-        print(f"  Data latih       : {self.train_data.n_tokens / 1e6:.1f}M token "
-              f"({self.train_data.n_chunks:,} potongan)")
-        print(f"  Data validasi    : {self.val_data.n_tokens / 1e6:.1f}M token")
+        print(f"  Data latih       : {self._ringkas_data(self.train_data)}")
+        print(f"  Data validasi    : {self._ringkas_data(self.val_data)}")
         print(f"  Batch            : {self.tcfg.batch_size} x "
               f"{self.tcfg.grad_accum_steps} akumulasi = "
               f"{self.tcfg.batch_size * self.tcfg.grad_accum_steps} sekuens efektif")
