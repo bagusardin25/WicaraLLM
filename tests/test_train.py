@@ -1,6 +1,7 @@
 """Uji training loop — Fase 4."""
 
 import math
+import sys
 from dataclasses import replace
 
 import numpy as np
@@ -87,16 +88,21 @@ def test_pesan_jelas_kalau_file_tidak_ada(tmp_path):
 
 
 def test_close_melepaskan_kunci_file_windows(tmp_path):
-    """Setelah close(), file token harus bisa ditimpa (menghindari error mmap di Windows)."""
+    """mmap mengunci file di Windows; close() harus melepasnya.
+
+    Linux tidak mengunci, jadi OSError hanya dicek di win32. Setelah
+    close(), overwrite harus berhasil di semua platform.
+    """
     path = tmp_path / "kunci.bin"
     write_tokens(path, np.arange(5000, dtype=np.int64) % 1000)
 
     ds = TokenDataset(path, seq_len=16)
-    with pytest.raises(OSError):
-        write_tokens(path, np.arange(5000, dtype=np.int64) % 500)
+    if sys.platform == "win32":
+        with pytest.raises(OSError):
+            write_tokens(path, np.arange(5000, dtype=np.int64) % 500)
 
     ds.close()
-    write_tokens(path, np.arange(5000, dtype=np.int64) % 500)  # sekarang boleh
+    write_tokens(path, np.arange(5000, dtype=np.int64) % 500)
 
 
 def test_dataset_bisa_dipakai_sebagai_context_manager(tmp_path):

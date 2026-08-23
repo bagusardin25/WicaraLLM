@@ -24,8 +24,11 @@ numpy==2.4.6             # memmap uint16 untuk train.bin/val.bin
 pyarrow==25.0.1          # baca parquet per batch tanpa memuat penuh ke RAM
 datasets==5.0.1          # streaming korpus besar dari HuggingFace
 
+# --- Tokenizer ---
+tokenizers==0.23.1       # BPE 16k (backend Rust)
+
 # --- Pengujian ---
-pytest==9.1.1            # 105 uji di tests/
+pytest==9.1.1            # uji di tests/
 
 # ===========================================================================
 # Sengaja TIDAK dipakai, supaya tidak ada dependensi yang menumpang:
@@ -38,7 +41,4 @@ pytest==9.1.1            # 105 uji di tests/
 #                   satu baris per event dan aman kalau training mati mendadak
 #   regex        -> pola yang dipakai cukup dengan `re` bawaan Python
 #   tqdm         -> progress dicetak manual dengan throughput dan ETA
-#
-# Akan ditambahkan di Fase 2 (tokenizer):
-#   tokenizers   -> training BPE 16k (backend Rust)
 # ===========================================================================
