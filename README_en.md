@@ -1,267 +1,245 @@
-# Wicara
-
 [🇮🇩 Bahasa Indonesia](README.md) | **🇬🇧 English**
+
+# Wicara
 
 **W**eight-efficient **I**ndonesian **C**onversational **A**rchitecture, **R**esearch **A**rtifact
 
-An Indonesian language model built from scratch — data, architecture, training, to inference — on **a single laptop with a 6 GB RTX 4050**.
+A 56-million-parameter Indonesian language model. Trained from scratch on a
+single RTX 4050 6 GB laptop.
 
-*Wicara* (from Sanskrit *vicāra*) means speech or discourse.
+*Wicara* (Sanskrit *vicāra*): speech, discourse. That is what it does.
 
-The goal is to learn how LLMs work completely by building one ourselves, rather than using an existing model. The functional target is intentionally simple: responding to basic Indonesian conversations (`" halo"`, `" apa kabar?"`).
-
-> *Building an Indonesian language model from scratch on a single 6 GB laptop
-> GPU. Every component — RMSNorm, RoPE, GQA, SwiGLU, KV-cache, training loop —
-> written by hand in PyTorch. Documentation and code comments are in Indonesian.*
+Data, tokenizer, architecture, training, inference — we wrote it ourselves
+in PyTorch. No off-the-shelf model, no API.
 
 ![tests](https://github.com/bagusardin25/WicaraLLM/actions/workflows/tests.yml/badge.svg)
 [![License](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](LICENSE)
 [![Python](https://img.shields.io/badge/python-3.11-blue.svg)](https://www.python.org/)
 
----
-
-## Status
-
-| Phase | Content | Status |
-|---|---|---|
-| 0 | Environment & GPU benchmark | ✅ Done |
-| 1 | Data pipeline (download, clean, dedup) | ✅ Done |
-| 2 | 16k BPE tokenizer + packing | ✅ Done |
-| 3 | Model architecture | ✅ Done |
-| 3b | Sanity check | ✅ Done |
-| 4 | Training loop | ✅ Done |
-| 5 | Pretrain | ✅ Done — val loss **3.05** (ppl 21.2) |
-| 6 | Conversational SFT | ⬜ Next |
-| 7 | Inference engine & CLI | ⬜ |
-| 8 | Evaluation | ⬜ |
-
-**149 tests passed.** `wicara-56m-base` is fully trained: 17,010 steps over
-1.11 billion tokens, one epoch with no repetition, reaching **val loss 3.05**
-(perplexity 21.2) in 11.1 hours on an RTX 4050. Details in
-[`notes/05-fase-5-pretrain.md`](notes/05-fase-5-pretrain.md).
-
-The model already produces grammatical Indonesian and shifts register to match
-context, but it still **continues text** rather than answering. Answering
-comes from SFT in Phase 6.
-
-Sample output at step 17,000 for the prompt `"Halo, apa kabar?"`:
-
-```
-Halo, ini aku, ada yang bisa kubantu?     (Hello, it's me, can I help you?)
-Aku segera ke sana.                       (I'll be right there.)
-Halo, ini aku Anna.                       (Hello, it's me, Anna.)
+```powershell
+.venv\Scripts\python.exe scripts\chat.py
 ```
 
-That emerged from **pretraining alone, without any SFT** — absorbed from
-thousands of phone conversations in the subtitle corpus.
+| You | Wicara |
+|---|---|
+| Halo! | Halo, Tn. |
+| Apa kabar? | Baik, baik. |
+| Siapa namamu? | Aku tidak punya nama. |
+| Terima kasih banyak! | Tidak masalah, tidak masalah. |
+| Sampai jumpa! | Sampai jumpa! |
+
+`wicara-56m-chat` answers one turn and stops.
+`wicara-56m-base` continues text — that is pretrain, before SFT.
+
+Pretrain done. Chat runs. Evaluation still open. **178 tests.**
 
 ---
 
-## Naming Convention
+## Model
 
 ```
 wicara-{size}-{type}
 ```
 
-| Component | Rule | Examples |
-|---|---|---|
-| `size` | parameter count; `m` below 1 billion, `b` above | `56m`, `350m`, `1b` |
-| `type` | training stage | `base`, `chat` |
+`56m` / `350m` / `1b` — parameter count. `base` is pretrain, `chat` has SFT.
+First release: **`wicara-56m-base`**, then **`wicara-56m-chat`**. A generation
+number (`wicara-2-…`) only appears if the architecture changes in a
+fundamental way.
 
-| Type | Meaning |
-|---|---|
-| `base` | Pretrained only — fluent in language, cannot handle Q&A yet |
-| `chat` | Has undergone SFT with a chat template |
-
-First release: **`wicara-56m-base`** then **`wicara-56m-chat`**.
-
-If the architecture fundamentally changes later, a generation number will be inserted after the name — `wicara-2-350m-base` — following the Llama pattern. As long as it is the first generation, the number is omitted.
-
-In the code, the config is selected via a size-based key: `7m`, `19m`, `32m`, `56m`, `88m`.
-
----
-
-## Specifications
-
-Llama-style architecture: pre-norm RMSNorm, RoPE, GQA, SwiGLU, no bias, *tied embeddings*.
+Llama-style: pre-norm RMSNorm, RoPE, GQA, SwiGLU, no bias, tied embeddings.
 
 | | `wicara-56m` |
 |---|---|
 | Parameters | **56.0 million** (45.5 million non-embedding) |
 | `d_model` / `n_layer` | 640 / 10 |
-| Attention heads | 10 query / 5 key-value (GQA 2:1) |
+| Attention | 10 query / 5 KV (GQA 2:1) |
 | `head_dim` / `d_ffn` | 64 / 1728 |
-| Vocab | 16,384 (custom byte-level BPE, 4.26 characters/token) |
-| Context length | 512 tokens |
+| Vocab | 16,384 byte-level BPE (4.26 characters/token) |
+| Context | 512 tokens |
 | Precision | bf16 autocast |
-| Learning rate | 8.0e-4 (scaled by 1/`d_model`, muP) |
 
-### Why 56M
+56 million because that is what fits in ~11 hours on this GPU. 1.1 billion
+tokens puts it on the Chinchilla point (~20 tokens/parameter). `7m` and
+`19m` are for fast iteration only.
 
-The optimal model size is determined by the **time budget**, not VRAM capacity. All figures below are directly measured on a Laptop RTX 4050, not estimated:
+### Pretrain — `wicara-56m-base`
 
-| Config | Parameters | tok/sec | VRAM | MFU | 1.3B tokens |
-|---|---|---|---|---|---|
-| `32m` | 32.0M | 40,615 | 2.19 GB | 22.8% | 8.9 hours |
-| **`56m`** | **56.0M** | **20,733** | **2.96 GB** | 22.5% | **17.4 hours** |
-| `88m` | 88.1M | 14,276 | 4.10 GB | 25.7% | 25.3 hours |
+| | Value |
+|---|---|
+| Val loss | **3.0505** (perplexity 21.2) |
+| Train loss | 2.937 — gap to val 0.12 |
+| Steps | 17,010 (1 epoch, 100% coverage) |
+| Throughput | 28,017 tokens/sec |
+| VRAM | 3.12 GB of 6.00 GB |
+| Duration | 11.1 hours |
 
-For a compute budget of ~3.6×10¹⁷ FLOPs (≈17 hours on this GPU), the Chinchilla-optimal size is √(C/120) ≈ **55 million parameters**. Given the same time budget, 32M becomes overtrained (79 tokens/parameter) and 88M becomes undertrained (10 tokens/parameter). VRAM only becomes the bottleneck around 100M.
+At step 17,000, prompt `"Halo, apa kabar?"` with no SFT at all:
 
-The `7m` and `19m` configs are used for rapid iteration and testing, not for release.
+```
+Halo, ini aku, ada yang bisa kubantu?
+Aku segera ke sana.
+Halo, ini aku Anna.
+```
+
+Absorbed from phone conversations in the subtitle corpus. Greetings trigger
+*aku/kau*; formal questions trigger *Saya/Anda*. Facts are unreliable:
+`"Indonesia adalah negara"` continues as `"...yang paling maju di dunia."`
+
+Details: [`notes/05-fase-5-pretrain.md`](notes/05-fase-5-pretrain.md).
+
+### SFT — `wicara-56m-chat`
+
+3,619 steps, ~20 minutes, val loss **1.37**. SFT loss is not comparable to
+pretrain: only assistant-answer tokens are counted.
+
+39,400 examples, mined from Aya, Cendol, and subtitles. Persona is still
+rough (`"Aku tidak punya nama."`) — handwritten data for that is ready,
+not yet trained.
+
+Details: [`notes/06-fase-6-sft.md`](notes/06-fase-6-sft.md).
 
 ---
 
 ## Corpus
 
-**1.12 billion tokens** from 3,985,535 documents. Entirely real text from public repositories — **no synthetic data**.
+**1.12 billion tokens** from 3,985,535 documents. Real text, no synthetic.
 
 | Source | Role | Tokens | Share | Passed filter | char/token |
 |---|---|---|---|---|---|
-| [OpenSubtitles v2024](https://opus.nlpl.eu/OpenSubtitles/id&id/v2024/OpenSubtitles) | Conversational dialogue | 484M | 43.2% | 93.9% | 3.98 |
-| [FineWeb-2 `ind_Latn`](https://huggingface.co/datasets/HuggingFaceFW/fineweb-2) | Informal written | 210M | 18.7% | 99.4% | 4.58 |
-| [Wikipedia Indonesia](https://huggingface.co/datasets/wikimedia/wikipedia) | Factual, complete sentences | 174M | 15.5% | 83.1% | 4.16 |
-| [Cendol v2](https://huggingface.co/datasets/indonlp/cendol_collection_v2) | Indonesian instructions | 129M | 11.5% | 73.3% | 4.46 |
+| [OpenSubtitles v2024](https://opus.nlpl.eu/OpenSubtitles/id&id/v2024/OpenSubtitles) | Dialogue | 484M | 43.2% | 93.9% | 3.98 |
+| [FineWeb-2 `ind_Latn`](https://huggingface.co/datasets/HuggingFaceFW/fineweb-2) | Informal writing | 210M | 18.7% | 99.4% | 4.58 |
+| [Wikipedia Indonesia](https://huggingface.co/datasets/wikimedia/wikipedia) | Full sentences | 174M | 15.5% | 83.1% | 4.16 |
+| [Cendol v2](https://huggingface.co/datasets/indonlp/cendol_collection_v2) | Instructions | 129M | 11.5% | 73.3% | 4.46 |
 | [Aya Collection](https://huggingface.co/datasets/CohereLabs/aya_collection_language_split) | Q&A | 121M | 10.8% | 79.7% | 4.78 |
-| [TED2020](https://opus.nlpl.eu/TED2020/id&id/v1/TED2020) | Formal spoken | 3M | 0.3% | 98.7% | 4.92 |
+| [TED2020](https://opus.nlpl.eu/TED2020/id&id/v1/TED2020) | Formal speech | 3M | 0.3% | 98.7% | 4.92 |
 
-Final result: `train.bin` **1,115,298,306 tokens**, `val.bin` 5,683,512 tokens.
-Validation is split at the **document** level, not by slicing the final array — slicing would split documents between train and val, causing data leakage.
+`train.bin` 1,115,298,306 tokens, `val.bin` 5,683,512. Split at document
+level — slicing the array would split documents across train and val.
 
-**19.9 tokens per parameter** — hitting exactly the Chinchilla-optimal point (20) for a 56M model, unplanned.
+Subtitles take the largest share because the focus is conversation, but they
+are not allowed to dominate: a model fed only movies talks in fragments.
+Wikipedia and FineWeb hold that back. CulturaX and OSCAR are gated;
+FineWeb-2 is what we used.
 
-### Tokenizer
+The 16,384 BPE tokenizer was trained on the clean corpus. 4.26
+characters/token — English tokenizers sit around 2.2 on Indonesian.
+`" halo"`, `" hai"`, `" iya"`, `" tidak"` are each one token. 32 special
+tokens at IDs 0–31 (8 live, 24 reserved) so later experiments do not need
+an embedding resize.
 
-Byte-level BPE, 16,384 vocab size, trained on a **clean** corpus (not raw, to ensure no vocab slots are wasted on filtered garbage).
-
-Compression ratio of **4.26 characters/token** — well above the planned target of 3.5-4.0. English-based tokenizers only reach ~2.2 for Indonesian text. The greetings targeted by this project are single tokens each: `" halo"`, `" hai"`, `" iya"`, `" tidak"`.
-
-32 special tokens occupy IDs 0-31 (8 active + 24 reserved), automatically verified after training. The reserved slots allow adding new tokens later without retraining the tokenizer or resizing the embeddings.
-
-Direct download links, licenses, citations, and SHA256 hashes for each file are in [`data/raw/SOURCES.md`](data/raw/SOURCES.md). Full cleaning statistics — including breakdowns per rejection reason — are in `data/clean/stats.json`.
-
-Subtitles are given the largest portion to match the conversational focus, but deliberately do **not** dominate: a model fed entirely on subtitles will speak in fragments like movie dialogue. Wikipedia and FineWeb balance it out with complete sentences.
-
-CulturaX and OSCAR — two of the most frequently recommended sources for Indonesian — turned out to be **gated** and require an account. FineWeb-2 was used instead: it's open, and its filtering and deduplication are stricter.
+Downloads, licenses, citations, SHA256: [`data/raw/SOURCES.md`](data/raw/SOURCES.md).
+Filter stats: `data/clean/stats.json`.
 
 ---
 
-## Getting Started
-
-Requires Python **3.11** from python.org (not MSYS2) and an NVIDIA GPU.
-
-```bash
-# 1. Environment
-py -3.11 -m venv .venv
-.venv\Scripts\python.exe -m pip install torch --index-url https://download.pytorch.org/whl/cu130
-.venv\Scripts\python.exe -m pip install -r requirements.txt
-
-# 2. Verify GPU + measure effective TFLOPS of your own machine
-.venv\Scripts\python.exe scripts\check_env.py
-
-# 3. Download corpus (~3.6 GB) then verify its integrity
-.venv\Scripts\python.exe scripts\download_corpus.py
-.venv\Scripts\python.exe scripts\verify_corpus.py
-
-# 4. Clean corpus (~40 minutes, CPU only)
-.venv\Scripts\python.exe scripts\clean_corpus.py
-
-# 5. Train 16k BPE tokenizer then pack to .bin (~8 minutes)
-.venv\Scripts\python.exe scripts\train_tokenizer.py
-.venv\Scripts\python.exe scripts\pack_tokens.py
-
-# 6. Test
-.venv\Scripts\python.exe -m pytest tests\ -q
-```
-
-Other useful commands:
-
-```bash
-.venv\Scripts\python.exe src\model\config.py                 # parameters & VRAM per config
-.venv\Scripts\python.exe scripts\bench_model.py --model 56m  # measure throughput
-.venv\Scripts\python.exe scripts\demo_cleaning.py            # cleaning demonstration
-```
-
----
-
-## Structure
+## Repo
 
 ```
 src/
   model/       rmsnorm · rope · attention (GQA+KV-cache) · ffn · transformer
-  data/        sources · readers · clean · dedup
-  train/       trainer · data (memmap, full epoch) · lr_schedule · checkpoint
-  infer/       generate (KV-cache, top-k/top-p, repetition penalty)
+  data/        sources · readers · clean · dedup · sft · sft_dataset
+  train/       trainer · data (memmap) · lr_schedule · checkpoint
+  infer/       generate
   tokenizer/   bpe · chat_template
 scripts/       check_env · download_corpus · verify_corpus · clean_corpus ·
-               demo_cleaning · train_tokenizer · pack_tokens · bench_model ·
-               train · generate
-tests/         149 tests
-notes/         notes per phase + LLM glossary (PDF)
+               train_tokenizer · pack_tokens · train · train_sft ·
+               build_sft_data · generate · chat
+tests/         178 tests
+notes/         notes per phase
 ```
 
 ---
 
-## Technical Notes
+## Running
 
-A few findings from building this on a 6 GB GPU, full details in [`notes/`](notes/):
+Python **3.11** from python.org (not MSYS2). NVIDIA GPU. PowerShell, not
+Git Bash.
 
-**Logits VRAM is massive and easily overlooked.** In small models with large vocabularies, the logits + cross-entropy tensors can consume nearly as much as the entire Transformer layers (768 MB vs 880 MB at batch 8). Early estimates were off by 2× from ignoring this.
+Chat, if a chat checkpoint is already there:
 
-**VRAM spills on Windows don't throw an error.** At batch 32, PyTorch allocates 7.1 GB on a 6.0 GB GPU without an `OutOfMemoryError` — Windows silently spills it to system RAM, and throughput drops 4×. The practical safe limit is ~5.5 GB, not 6.0 GB.
+```powershell
+.venv\Scripts\python.exe scripts\chat.py
+.venv\Scripts\python.exe scripts\chat.py --uji
+```
 
-**FlashAttention is unavailable in Windows PyTorch wheels.** Not a problem: the `mem_efficient` kernel also avoids materializing the seq×seq matrix in memory.
+From scratch:
 
-**memmap locks files on Windows.** A mapped file cannot be overwritten, meaning the data pipeline fails as long as a `TokenDataset` is alive. This doesn't happen on Linux, so it's easy to miss.
+```powershell
+py -3.11 -m venv .venv
+.venv\Scripts\python.exe -m pip install torch --index-url https://download.pytorch.org/whl/cu130
+.venv\Scripts\python.exe -m pip install -r requirements.txt
+.venv\Scripts\python.exe scripts\check_env.py
+.venv\Scripts\python.exe scripts\download_corpus.py
+.venv\Scripts\python.exe scripts\verify_corpus.py
+.venv\Scripts\python.exe scripts\clean_corpus.py
+.venv\Scripts\python.exe scripts\train_tokenizer.py
+.venv\Scripts\python.exe scripts\pack_tokens.py
+.venv\Scripts\python.exe -m pytest tests\ -q
+```
 
-**Deduplication at the wrong level does more harm than no dedup.** Line-level dedup on subtitles discarded 39.7% of the data — but what got discarded were the most common conversational phrases (`terima kasih` [thank you] 845×, `halo` [hello] 458×). Natural language is Zipfian; those phrases *should* appear frequently. Block-level dedup only discarded 3.2%, which is actual duplication.
+Also:
 
-**`initial loss = ln(vocab)` is a test tool, not just info.** A loss below that number implies label leakage — and leakage makes numbers look *good*, so it won't be caught by looking at the loss curve.
+```powershell
+.venv\Scripts\python.exe src\model\config.py
+.venv\Scripts\python.exe scripts\bench_model.py --model 56m
+.venv\Scripts\python.exe scripts\train.py --model 56m
+.venv\Scripts\python.exe scripts\train_sft.py
+```
 
 ---
 
-## Limitations
+## What we hit on 6 GB
 
-Needs to be stated upfront, as the project name doesn't promise it: `wicara-56m` **cannot reason**. A model this size can generate grammatical Indonesian, respond to greetings with the appropriate tone, and maintain coherence for one to three sentences. It will **not** be factually accurate, cannot do math, cannot perform step-by-step reasoning, and will confidently hallucinate.
+Full notes in [`notes/`](notes/). The ones that keep biting:
 
-That is not a bug — that's just the capacity of 56 million parameters. The distance to a 7B model is roughly 125× the parameters and 1000× the compute.
+- **Logits eat nearly as much VRAM as the whole Transformer.** Early
+  estimates were off 2× from ignoring that (768 MB vs 880 MB at batch 8).
+- **Windows does not throw OOM.** Batch 32 allocates 7.1 GB on a 6.0 GB GPU
+  — spill to RAM, throughput drops 4×. Safe ceiling ~5.5 GB.
+- **No FlashAttention in Windows PyTorch wheels.** `mem_efficient` is enough.
+- **memmap locks files on Windows.** Call `TokenDataset.close()` before
+  overwriting a `.bin`. Does not happen on Linux.
+- **Line-level subtitle dedup drops 39.7%** — including `terima kasih` 845×
+  and `halo` 458×, which are Zipfian. Block-level dedup is 3.2%.
+- **Loss below ln(vocab) at the first steps = label leakage.** The number
+  looks good, so the curve will not catch it.
+
+---
+
+## Limits
+
+`wicara-56m` is fluent. It does not reason, does not do math, and cannot
+be trusted on facts. Its hallucinations sound confident. That is 56 million
+parameters, not a bug. Distance to a 7B model is about 125× parameters.
 
 ---
 
 ## License
 
-In an LLM project, there are **three different things** with distinct licenses, and conflating them is a common mistake:
+Three things, three rules.
 
-### 1. Code — Apache-2.0
+**Code** (`src/`, `scripts/`, `tests/`) — [Apache-2.0](LICENSE). Includes
+a patent grant.
 
-The entire contents of `src/`, `scripts/`, and `tests/` are licensed under [Apache-2.0](LICENSE). Free to use, modify, and distribute, including for commercial purposes, with attribution. Apache was chosen (rather than MIT) because it includes an explicit patent grant.
+**Corpus** is not in the repo. Only the download recipe. Each source has
+its own license; the list is in [`data/raw/SOURCES.md`](data/raw/SOURCES.md).
 
-### 2. Corpus — not redistributed
+| Source | License |
+|---|---|
+| Wikipedia Indonesia | CC-BY-SA-3.0 |
+| FineWeb-2 | ODC-BY-1.0 |
+| Aya Collection | Apache-2.0 |
+| Cendol v2 | Apache-2.0 |
+| TED2020 | CC-BY-NC-ND-4.0 (non-commercial) |
+| OpenSubtitles | see opus.nlpl.eu |
 
-This repo does **not** host a single byte of corpus text. What is included are the recipes to build it: `scripts/download_corpus.py` downloads directly from the original sources, and [`data/raw/SOURCES.md`](data/raw/SOURCES.md) records the links, licenses, citations, and SHA256 hashes for each file.
+**Weights** are not released. When `wicara-56m-base` is published:
+OpenSubtitles is ~43% of the corpus, and the legal status of weights as a
+derivative work is unresolved anywhere; TED2020 is 0.3% and non-commercial
+— for commercial use that source has to come out of `KOMPOSISI` in
+`scripts/clean_corpus.py`, then retrain.
 
-The license for each source varies and must be respected individually:
-
-| Source | License | Note |
-|---|---|---|
-| Wikipedia Indonesia | CC-BY-SA-3.0 | *share-alike* |
-| FineWeb-2 | ODC-BY-1.0 | attribution |
-| Aya Collection | Apache-2.0 | free |
-| Cendol v2 | Apache-2.0 | free |
-| TED2020 | CC-BY-NC-ND-4.0 | **non-commercial** |
-| OpenSubtitles | see opus.nlpl.eu | most unclear status |
-
-### 3. Model weights — none yet, requires thought before release
-
-No weights have been released yet. When `wicara-56m-base` is published later, these two things must be clearly stated in its model card:
-
-**OpenSubtitles contributes 40% of the corpus.** It contains movie dialogues uploaded by users to opensubtitles.org. OPUS distributes it for research purposes, and training models on it is standard practice in research. But the legal status of *model weights* as derivative works is unresolved anywhere, and this repo does not pretend to know the answer.
-
-**TED2020 has a non-commercial license** (CC-BY-NC-ND). Its portion is only 0.3%, but if the model weights are to be used commercially, this source should be removed and the model retrained without it — corpus composition can be configured in `KOMPOSISI` inside `scripts/clean_corpus.py`.
-
-For use as a learning and research resource — the goal of this project — both of the above are not an issue. They only matter if the direction shifts to commercial.
-
----
+For research and learning, neither is a problem.
 
 ## Citation
 
@@ -274,6 +252,5 @@ For use as a learning and research resource — the goal of this project — bot
 }
 ```
 
-## Attribution
-
-If using this code, simply include the attribution required by Apache-2.0. The corpus must be cited to their respective original sources — the complete citation list is in [`data/raw/SOURCES.md`](data/raw/SOURCES.md).
+Code needs Apache-2.0 attribution. Cite the corpus at the original
+sources — full list in [`data/raw/SOURCES.md`](data/raw/SOURCES.md).
