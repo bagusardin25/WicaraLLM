@@ -1,7 +1,7 @@
 # Wicara — Catatan Serah Terima
 
 Dokumen untuk melanjutkan proyek di sesi baru tanpa kehilangan konteks.
-Terakhir diperbarui: **2026-08-23**.
+Terakhir diperbarui: **2026-08-24**.
 
 > Baca bagian 1, 6, dan 7 dulu. Sisanya rujukan.
 
@@ -19,9 +19,9 @@ Lokasi: `D:\Project\llmgusz` · Repo GitHub: `bagusardin25/WicaraLLM`
 Indonesia, dan **menyesuaikan panjang respons dengan prompt** — sapaan
 dijawab singkat, permintaan bercerita dijawab panjang dan natural.
 
-**Status: pretrain dan SFT sudah selesai.** Model berfungsi untuk sapaan.
-Data untuk dua pola yang tersisa (persona dan permintaan terbuka tanpa topik)
-sudah ditulis dan siap — tinggal dilatih jadi v3. Lihat bagian 6.
+**Status: pretrain dan SFT sudah selesai.** Sapaan dan permintaan terbuka
+sudah bekerja (v3). Yang masih gagal: persona — model belum mengaku bernama
+Wicara. Data v4 untuk memperbaikinya sudah siap, tinggal dilatih. Bagian 6.
 
 ---
 
@@ -37,11 +37,12 @@ sudah ditulis dan siap — tinggal dilatih jadi v3. Lihat bagian 6.
 | 4 | Training loop | ✅ |
 | 5 | Pretrain `wicara-56m-base` | ✅ val loss 3,05 |
 | 6 | SFT `wicara-56m-chat` | ✅ val loss 1,45 (v2) |
-| 6b | Data tulis tangan: persona & permintaan terbuka | 🟨 data siap, **belum dilatih** |
+| 6b | Data tulis tangan: persona & permintaan terbuka | 🟨 v3 dilatih — `terbuka` ✅, `persona` ❌ |
+| 6c | v4: persona diperbesar 161 → 704 | 🟨 data siap, **belum dilatih** |
 | 7 | Inference engine & CLI | 🟨 `chat.py` + `generate.py` jalan |
 | 8 | Evaluasi | ⬜ belum |
 
-**178 uji lolos** (`pytest tests/ -q`).
+**179 uji lolos** (`pytest tests/ -q`).
 
 Catatan per fase ada di `notes/00-` sampai `notes/06b-`.
 
@@ -86,9 +87,9 @@ parameter (Chinchilla-optimal ≈ 20).
 | Throughput | 28.017 tok/s | ~60.000 tok/s |
 | VRAM | 3,12 GB | ~2,2 GB |
 
-### Data SFT v3 — 40.200 contoh (`data/sft-v3/`)
+### Data SFT v4 — 40.743 contoh (`data/sft-v4/`)
 
-39.396 train · 804 val. Data v2 (41.000 contoh) tetap utuh di `data/sft/`.
+39.929 train · 814 val. Versi lama utuh: `data/sft/` (v2), `data/sft-v3/` (v3).
 
 | Kategori | Sumber | Contoh | Median jawaban |
 |---|---|---|---|
@@ -101,12 +102,15 @@ parameter (Chinchilla-optimal ≈ 20).
 | terima_kasih | subtitle | 1.500 | 14 char |
 | maaf | subtitle | 1.200 | 14 char |
 | tidak_tahu | subtitle | 600 | 15 char |
-| **terbuka** | **tulis tangan** | **239** | **215 char** |
-| **persona** | **tulis tangan** | **138** | **87 char** |
-| **batas** | **tulis tangan** | **23** | **112 char** |
+| **persona** | **tulis tangan** | **584** (292 unik ×2) | 71 char |
+| **terbuka** | **tulis tangan** | **239** | 215 char |
+| **batas** | **tulis tangan** | **120** (60 unik ×2) | 112 char |
 
-Dua perubahan dari v2: `perkenalan` (1.200 contoh) **dihapus** — lihat bagian
-6 dan 7 — dan tiga kategori tulis tangan ditambahkan (400 contoh, 1,0%).
+Tulis tangan 943 instance (2,3%), dari 591 contoh unik. `perkenalan` sudah
+dihapus sejak v3 — lihat bagian 6 dan 7.
+
+**persona + batas = 704 melawan tidak_tahu = 600.** Perbandingan itu yang
+menentukan; di v3 angkanya 161 lawan 600 dan persona kalah telak.
 
 Perhatikan median `wikihow`: **632 karakter**. Itu lebih panjang daripada yang
 muat di anggaran token inference sebelum diperbaiki; lihat bagian 7.
@@ -119,15 +123,16 @@ muat di anggaran token inference sebelum diperbaiki; lihat bagian 7.
 checkpoints/
   wicara-56m-base/     best.pt (val 3,0505) · final.pt · log.jsonl · samples.txt
   wicara-56m-chat/     SFT v1 — tidak_tahu 3.000 contoh
-  wicara-56m-chat-v2/  SFT v2 — tidak_tahu 600, Dolly-v2 masuk  <-- PAKAI INI
-  wicara-56m-chat-v3/  SFT v3 — BELUM ADA, tinggal dilatih (bagian 6)
+  wicara-56m-chat-v2/  SFT v2 — tidak_tahu 600, Dolly-v2 masuk
+  wicara-56m-chat-v3/  SFT v3 — tulis tangan 400  <-- TERBAIK SEJAUH INI
+  wicara-56m-chat-v4/  SFT v4 — BELUM ADA, tinggal dilatih (bagian 6)
 ```
 
-`chat.py` sekarang default ke v2 (sebelumnya masih menunjuk v1).
+`chat.py` masih default ke v2 — ganti ke v3, atau v4 setelah terbukti.
 
 `wicara-56m-chat-v2/log.jsonl` dan `samples.txt` **kosong (0 byte)** karena
-mati listrik saat training baru selesai. Bobotnya sendiri **utuh dan
-terverifikasi** (55.964.800 parameter, tanpa NaN).
+mati listrik saat training baru selesai. Bobotnya **utuh dan terverifikasi**
+(55.964.800 parameter, tanpa NaN). Log v3 utuh.
 
 ---
 
@@ -150,22 +155,23 @@ cd D:\Project\llmgusz
 # uji
 .venv\Scripts\python.exe -m pytest tests\ -q
 
-# LATIH v3 — data di data/sft-v3/ sudah dibangun, tinggal jalankan (~20 menit)
-.venv\Scripts\python.exe scripts\train_sft.py --epochs 3 --sft-dir data/sft-v3 --out-dir checkpoints/wicara-56m-chat-v3
+# LATIH v4 — data di data/sft-v4/ sudah dibangun, tinggal jalankan (~20 menit)
+.venv\Scripts\python.exe scripts\train_sft.py --epochs 3 --sft-dir data/sft-v4 --out-dir checkpoints/wicara-56m-chat-v4
 
-# lalu bandingkan dengan v2
+# lalu bandingkan v4 dengan v3
+.venv\Scripts\python.exe scripts\chat.py --ckpt checkpoints/wicara-56m-chat-v4/best.pt --uji
 .venv\Scripts\python.exe scripts\chat.py --ckpt checkpoints/wicara-56m-chat-v3/best.pt --uji
 
 # bangun ulang data (hanya kalau tulis_tangan.jsonl atau kuota diubah)
-.venv\Scripts\python.exe scripts\build_sft_data.py --out-dir data/sft-v3
+.venv\Scripts\python.exe scripts\build_sft_data.py --out-dir data/sft-v4
 ```
 
-`data/sft/` (data v2) sengaja tidak ditimpa — v3 dibangun ke direktori
-terpisah supaya v2 tetap bisa direproduksi persis.
+Tiap versi dibangun ke direktori sendiri (`data/sft/`, `sft-v3/`, `sft-v4/`)
+supaya versi lama tetap bisa direproduksi persis.
 
 ---
 
-## 6. LANGKAH BERIKUTNYA — latih v3
+## 6. LANGKAH BERIKUTNYA — latih v4
 
 ### Yang diinginkan pemilik
 
@@ -186,49 +192,67 @@ singkat. Model juga **sudah bisa menjawab panjang**:
 Yang ketiga penting: itu **bahasa santai tanpa kapital**. Jadi register santai
 BUKAN penghalang.
 
-### Dua pola yang gagal — datanya sudah ditulis
+### Hasil v3: `terbuka` berhasil, `persona` gagal
 
-| Prompt gagal | Prompt setara yang BERHASIL | Diagnosis |
+Diuji pada 12 prompt dan setelan `chat.py` yang sama untuk kedua checkpoint:
+
+| Prompt | v2 | v3 |
 |---|---|---|
-| `"Ceritakan sesuatu"` | `"cerita dong"` ✓ 84 char | **Tidak ada topik** — model tak punya pegangan |
-| `"Kamu bisa apa?"` | `"Jelaskan apa saja yang bisa kamu lakukan."` ✓ 435 char | **Tidak punya persona** |
+| **Ceritakan sesuatu.** | Aku tidak tahu. | Baik, satu hal kecil. Ada seorang gadis bernama Trie… (3 kalimat) ✅ |
+| **bosen nih** | Hey, apa yang terjadi? | Baiklah, kita mulai. 🟨 |
+| **Siapa kamu?** | Aku tidak… | Aku Kawis! ❌ |
+| **Kamu bisa apa?** | Aku tak tahu. | Saya tidak tahu. ❌ |
 
-**Ini BUKAN batas kapasitas 56M.** Model mampu; yang kurang contoh SFT-nya.
+Sisanya (sapaan, terima kasih, perpisahan, Zimbabwe, nasi goreng) setara.
 
-**Sudah dikerjakan** (disetujui pemilik, detail di
-`notes/06b-fase-6b-tulis-tangan.md`):
+**Kenapa satu berhasil dan satu tidak:**
 
-- `data/sft/tulis_tangan.jsonl` — **400 contoh tulis tangan**, ±1% dari total.
-  239 `terbuka` (median 215 char), 138 `persona`, 23 `batas`. JSONL polos dan
-  ikut ter-commit, jadi bisa dibaca dan disunting langsung.
-- Kategori `perkenalan` **dimatikan** — lihat bagian 7, ini penyebab sebenarnya
-  dari `"Namaku Kittan"`.
-- `chat.py --max-new-tokens` 100 → 160; jawaban panjang selama ini terpotong.
-- `data/sft-v3/` sudah dibangun. `data/sft/` (v2) tidak disentuh.
+| Kategori | Contoh | Porsi | Prior yang dilawan | Hasil |
+|---|---|---|---|---|
+| `terbuka` | 239 | 0,59% | lemah | ✅ |
+| `persona` | 138 | 0,34% | nama tokoh dari 484 juta token subtitle | ❌ |
 
-### Yang tersisa: jalankan training
+Ditambah `tidak_tahu` yang **4,3× lebih banyak** dari persona, dan terlihat
+membajak "Kamu bisa apa?" di v2 maupun v3.
+
+**Jangan pakai val loss untuk menilai ini.** 1,7485 lawan 1,4541 diukur pada
+val set berbeda, dan val set-nya saling bocor 95%. Lihat bagian 7.
+
+### v4 — perbesar persona (SIAP DILATIH)
+
+Satu perubahan saja, supaya sebabnya jelas:
+
+| | v3 | v4 |
+|---|---|---|
+| persona + batas (unik) | 161 | **352** |
+| Pengulangan di campuran | 1× | **2×** |
+| Instance | 161 | **704** |
+| Lawan `tidak_tahu` (600) | kalah 1:3,7 | **menang 1,2:1** |
+
+191 varian baru, bobot terbesar di pertanyaan identitas. `tidak_tahu`
+**tidak** dimatikan — pemilik memilih mengubah satu hal saja.
 
 ```powershell
-.venv\Scripts\python.exe scripts\train_sft.py --epochs 3 --sft-dir data/sft-v3 --out-dir checkpoints/wicara-56m-chat-v3
-.venv\Scripts\python.exe scripts\chat.py --ckpt checkpoints/wicara-56m-chat-v3/best.pt --uji
+.venv\Scripts\python.exe scripts\train_sft.py --epochs 3 --sft-dir data/sft-v4 --out-dir checkpoints/wicara-56m-chat-v4
+.venv\Scripts\python.exe scripts\chat.py --ckpt checkpoints/wicara-56m-chat-v4/best.pt --uji
 ```
 
-`chat.py --uji` sekarang 12 prompt; empat terakhir (`Siapa kamu?`,
-`Kamu bisa apa?`, `Ceritakan sesuatu.`, `bosen nih`) khusus menguji fase ini.
-
-**Perkiraan jujur:** persona kemungkinan besar berhasil (tidak ada lagi contoh
-yang bersaing). Permintaan terbuka kurang pasti — ia melawan kebiasaan "aku
-tidak tahu" dari pretrain, dan SFT hanya bisa menambah pola baru, bukan
-menghapus pola lama.
-
-Kalau v3 lebih buruk, v2 masih utuh dan tinggal dipakai lagi.
+Yang dilihat: `Siapa kamu?` dan `Kamu bisa apa?` harus menyebut Wicara.
+`Ceritakan sesuatu.` harus tetap sebaik v3 — kalau memburuk, persona
+mengambil terlalu banyak ruang.
 
 ### Belum dikerjakan, sengaja di luar lingkup
 
-1. **Penolakan pertanyaan pengetahuan** — `"Apa ibu kota Zimbabwe?"` masih
+1. **Val split stabil** — sampai ini diperbaiki, tiap versi hanya bisa dinilai
+   dari perilaku. Ini yang paling menghambat, lihat bagian 7.
+2. **`tidak_tahu` → 0** — alasannya sama dengan `perkenalan`, tapi pemilik
+   memilih menundanya.
+3. **Penolakan pertanyaan pengetahuan** — `"Apa ibu kota Zimbabwe?"` masih
    dikarang. Butuh contoh berbentuk `"Apa ibu kota X?"` → `"Maaf, tidak tahu"`.
-2. **Multi-turn** — ditunda pemilik supaya v3 hanya menguji satu perubahan.
-   Lihat bagian 7: datanya harus tulis tangan juga.
+4. **Multi-turn** — datanya harus tulis tangan juga; lihat bagian 7.
+5. **Jawaban `terbuka` yang bertanya balik** — sekitar 35 contoh menawarkan
+   pilihan alih-alih langsung bercerita. Model menirunya lalu berhenti
+   ("Baiklah, kita mulai."). Layak diganti jadi langsung bercerita.
 
 ---
 

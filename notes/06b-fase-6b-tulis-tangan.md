@@ -135,10 +135,76 @@ disunting tangan: bentuk JSON, contoh kembar, saringan yang sama dengan jalur
 tambang, jawaban `terbuka` yang pelan-pelan memendek, penyebutan nama selain
 Wicara, dan kuota `perkenalan` yang dihidupkan lagi.
 
-## Berikutnya
+## Hasil v3 — satu dari dua tujuan tercapai
 
-Latih v3 dan bandingkan dengan v2 lewat `chat.py --uji` (12 prompt, empat di
-antaranya khusus menguji fase ini).
+Dilatih 3 epoch, 3.680 langkah. Dibandingkan dengan v2 pada 12 prompt dan
+setelan `chat.py` yang sama:
+
+| Prompt | v2 | v3 |
+|---|---|---|
+| **Ceritakan sesuatu.** | Aku tidak tahu. | Baik, satu hal kecil. Ada seorang gadis bernama Trie… (3 kalimat) |
+| **bosen nih** | Hey, apa yang terjadi? | Baiklah, kita mulai. |
+| **Siapa kamu?** | Aku tidak… | Aku Kawis! |
+| **Kamu bisa apa?** | Aku tak tahu. | Saya tidak tahu. |
+
+**`terbuka` berhasil telak.** Dari gagal total (15 karakter) jadi cerita tiga
+kalimat dalam register yang dilatih.
+
+**`persona` gagal total.** Tidak sekali pun menyebut Wicara.
+
+### Dua kesalahan di catatan versi pertama
+
+**Prediksi salah.** Catatan ini semula memperkirakan persona kemungkinan besar
+berhasil karena 1.200 contoh `perkenalan` sudah dihapus. Alasan itu tidak
+lengkap: menghapus saingan di SFT tidak menyentuh prior pretrain.
+
+**Diagnosis terlalu kuat.** HANDOFF sempat menyatakan `"Namaku Kittan"` berasal
+murni dari data SFT. v3 membantahnya — dengan `perkenalan` dihapus habis, model
+tetap mengarang nama. Sudah dikoreksi di HANDOFF bagian 7.
+
+### Kenapa terbuka berhasil tapi persona tidak
+
+| Kategori | Contoh | Porsi | Prior yang dilawan | Hasil |
+|---|---|---|---|---|
+| `terbuka` | 239 | 0,59% | lemah | ✅ |
+| `persona` | 138 | 0,34% | nama tokoh dari 484 juta token subtitle | ❌ |
+
+Ditambah `tidak_tahu` yang **4,3× lebih banyak** dari persona dan terlihat
+membajak "Kamu bisa apa?" di v2 maupun v3.
+
+### Val loss v3 tidak bisa dibandingkan dengan v2
+
+v3 mencatat 1,7485 dan v2 1,4541, tapi keduanya diukur pada val set berbeda.
+Evaluasi silang juga tidak menolong: **95,5% val v2 ada di train v3** dan
+**96,0% val v3 ada di train v2**, karena split diambil dari 2% pertama sesudah
+shuffle. Ganti isi daftar sedikit saja, split tersusun ulang.
+
+Sampai split dibuat stabil (berbasis hash isi contoh), **v3 dan v4 hanya bisa
+dinilai dari perilaku.** Belum dikerjakan.
+
+## v4 — perbesar persona
+
+Satu perubahan saja, supaya sebabnya jelas:
+
+| | v3 | v4 |
+|---|---|---|
+| persona + batas (unik) | 161 | 352 |
+| Pengulangan | 1× | **2×** |
+| Instance di campuran | 161 | **704** |
+| Lawan `tidak_tahu` (600) | kalah 1:3,7 | **menang 1,2:1** |
+
+191 varian baru ditulis, bobot terbesar di pertanyaan identitas — di situlah
+prior pretrain paling kuat dan di situ v3 gagal. Sebagian besar jawaban
+menempatkan "Wicara" di awal kalimat, karena itu posisi token yang harus
+dipelajari.
+
+Pengulangan 2× aman untuk kategori ini: menghafal "Saya Wicara" memang
+tujuannya, berbeda dari kategori lain di mana hafalan justru merugikan.
+Dikunci uji `test_persona_mengalahkan_tidak_tahu`.
+
+`tidak_tahu` **tidak** dimatikan — pemilik memilih mengubah satu hal saja.
+
+## Berikutnya
 
 Yang **belum** dikerjakan dan sengaja di luar lingkup:
 
