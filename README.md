@@ -1,5 +1,7 @@
 **🇮🇩 Bahasa Indonesia** | [🇬🇧 English](README_en.md)
 
+<img src="assets/wicarallm-logomark.png" alt="Logo Wicara" width="150">
+
 # Wicara
 
 **W**eight-efficient **I**ndonesian **C**onversational **A**rchitecture, **R**esearch **A**rtifact
