@@ -16,12 +16,17 @@ in PyTorch. No off-the-shelf model, no API.
 
 ![tests](https://github.com/bagusardin25/WicaraLLM/actions/workflows/tests.yml/badge.svg)
 [![License](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](LICENSE)
-[![Python](https://img.shields.io/badge/python-3.11-blue.svg)](https://www.python.org/)
 [![Hugging Face Model](https://img.shields.io/badge/%F0%9F%A4%97%20Hugging%20Face-Model-blue)](https://huggingface.co/num1notsvn/wicara-56m-chat)
+[![GGUF Quantized](https://img.shields.io/badge/%F0%9F%A4%97%20GGUF-Quantized-green)](https://huggingface.co/num1notsvn/wicara-56m-chat-GGUF)
+[![Ollama](https://img.shields.io/badge/Ollama-hf.co%2Fnum1notsvn%2Fwicara--56m--chat--GGUF-black)](https://huggingface.co/num1notsvn/wicara-56m-chat-GGUF)
 [![Hugging Face Space](https://img.shields.io/badge/%F0%9F%A4%97%20Hugging%20Face-Space%20Demo-orange)](https://huggingface.co/spaces/num1notsvn/wicara-56m-chat-demo)
 [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/bagusardin25/WicaraLLM/blob/main/Wicara_56M_Chat_Demo.ipynb)
 
-```powershell
+```bash
+# Option 1: Run directly via Ollama (~70 MB, no manual download/clone)
+ollama run hf.co/num1notsvn/wicara-56m-chat-GGUF:Q8_0
+
+# Option 2: Run locally with PyTorch
 .venv\Scripts\python.exe scripts\chat.py
 ```
 
@@ -244,7 +249,13 @@ its own license; the list is in [`data/raw/SOURCES.md`](data/raw/SOURCES.md).
 | TED2020 | CC-BY-NC-ND-4.0 (non-commercial) |
 | OpenSubtitles | see opus.nlpl.eu |
 
-**Weights** for chat are published on [Hugging Face](https://huggingface.co/num1notsvn/wicara-56m-chat). The base model weights have not been released yet. When `wicara-56m-base` is published:
+**Model weights:**
+- **Chat Model (PyTorch / Safetensors):** [`num1notsvn/wicara-56m-chat`](https://huggingface.co/num1notsvn/wicara-56m-chat)
+- **GGUF Format (Ollama & LM Studio):** [`num1notsvn/wicara-56m-chat-GGUF`](https://huggingface.co/num1notsvn/wicara-56m-chat-GGUF) (`Q8_0` ~70 MB & `F16` ~133 MB)
+- **Interactive Web Demo:** [Hugging Face Space](https://huggingface.co/spaces/num1notsvn/wicara-56m-chat-demo)
+- **Google Colab Notebook:** [Open In Colab](https://colab.research.google.com/github/bagusardin25/WicaraLLM/blob/main/Wicara_56M_Chat_Demo.ipynb)
+
+Base model weights (`wicara-56m-base`) have not been released publicly yet. When published:
 OpenSubtitles is ~43% of the corpus, and the legal status of weights as a
 derivative work is unresolved anywhere; TED2020 is 0.3% and non-commercial
 — for commercial use that source has to come out of `KOMPOSISI` in

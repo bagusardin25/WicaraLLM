@@ -16,12 +16,17 @@ PyTorch. Tidak ada model jadi, tidak ada API.
 
 ![tests](https://github.com/bagusardin25/WicaraLLM/actions/workflows/tests.yml/badge.svg)
 [![License](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](LICENSE)
-[![Python](https://img.shields.io/badge/python-3.11-blue.svg)](https://www.python.org/)
 [![Hugging Face Model](https://img.shields.io/badge/%F0%9F%A4%97%20Hugging%20Face-Model-blue)](https://huggingface.co/num1notsvn/wicara-56m-chat)
+[![GGUF Quantized](https://img.shields.io/badge/%F0%9F%A4%97%20GGUF-Quantized-green)](https://huggingface.co/num1notsvn/wicara-56m-chat-GGUF)
+[![Ollama](https://img.shields.io/badge/Ollama-hf.co%2Fnum1notsvn%2Fwicara--56m--chat--GGUF-black)](https://huggingface.co/num1notsvn/wicara-56m-chat-GGUF)
 [![Hugging Face Space](https://img.shields.io/badge/%F0%9F%A4%97%20Hugging%20Face-Space%20Demo-orange)](https://huggingface.co/spaces/num1notsvn/wicara-56m-chat-demo)
 [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/bagusardin25/WicaraLLM/blob/main/Wicara_56M_Chat_Demo.ipynb)
 
-```powershell
+```bash
+# Opsi 1: Jalankan langsung via Ollama (hanya ~70 MB, tanpa clone/setup)
+ollama run hf.co/num1notsvn/wicara-56m-chat-GGUF:Q8_0
+
+# Opsi 2: Jalankan lokal dengan PyTorch
 .venv\Scripts\python.exe scripts\chat.py
 ```
 
@@ -244,7 +249,13 @@ punya lisensi sendiri; daftarnya di [`data/raw/SOURCES.md`](data/raw/SOURCES.md)
 | TED2020 | CC-BY-NC-ND-4.0 (non-komersial) |
 | OpenSubtitles | lihat opus.nlpl.eu |
 
-**Bobot chat** sudah kami publikasikan di [Hugging Face](https://huggingface.co/num1notsvn/wicara-56m-chat). Bobot base belum kami rilis. Kalau nanti `wicara-56m-base` dipublikasikan:
+**Bobot model:**
+- **Model Chat (PyTorch / Safetensors):** [`num1notsvn/wicara-56m-chat`](https://huggingface.co/num1notsvn/wicara-56m-chat)
+- **Format GGUF (Ollama & LM Studio):** [`num1notsvn/wicara-56m-chat-GGUF`](https://huggingface.co/num1notsvn/wicara-56m-chat-GGUF) (versi `Q8_0` ~70 MB & `F16` ~133 MB)
+- **Demo Web Interaktif:** [Hugging Face Space](https://huggingface.co/spaces/num1notsvn/wicara-56m-chat-demo)
+- **Notebook Google Colab:** [Open In Colab](https://colab.research.google.com/github/bagusardin25/WicaraLLM/blob/main/Wicara_56M_Chat_Demo.ipynb)
+
+Bobot base (`wicara-56m-base`) belum kami rilis publik. Kalau nanti dipublikasikan:
 OpenSubtitles ~43% korpus, status hukum bobot sebagai karya turunan belum
 tuntas di mana pun; TED2020 0,3% dan non-komersial — untuk pemakaian
 komersial sumber itu harus dikeluarkan di `KOMPOSISI` pada
