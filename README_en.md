@@ -1,5 +1,7 @@
 [🇮🇩 Bahasa Indonesia](README.md) | **🇬🇧 English**
 
+<img src="assets/wicarallm-logomark.png" alt="Logo Wicara" width="150">
+
 # Wicara
 
 **W**eight-efficient **I**ndonesian **C**onversational **A**rchitecture, **R**esearch **A**rtifact
@@ -15,6 +17,9 @@ in PyTorch. No off-the-shelf model, no API.
 ![tests](https://github.com/bagusardin25/WicaraLLM/actions/workflows/tests.yml/badge.svg)
 [![License](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](LICENSE)
 [![Python](https://img.shields.io/badge/python-3.11-blue.svg)](https://www.python.org/)
+[![Hugging Face Model](https://img.shields.io/badge/%F0%9F%A4%97%20Hugging%20Face-Model-blue)](https://huggingface.co/num1notsvn/wicara-56m-chat)
+[![Hugging Face Space](https://img.shields.io/badge/%F0%9F%A4%97%20Hugging%20Face-Space%20Demo-orange)](https://huggingface.co/spaces/num1notsvn/wicara-56m-chat-demo)
+[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/bagusardin25/WicaraLLM/blob/main/Wicara_56M_Chat_Demo.ipynb)
 
 ```powershell
 .venv\Scripts\python.exe scripts\chat.py
@@ -31,7 +36,7 @@ in PyTorch. No off-the-shelf model, no API.
 `wicara-56m-chat` answers one turn and stops.
 `wicara-56m-base` continues text — that is pretrain, before SFT.
 
-Pretrain done. Chat runs. Evaluation still open. **178 tests.**
+Pretraining done. SFT done. Behavioral evaluation done (Phase 8). **217 tests.**
 
 ---
 
@@ -139,23 +144,31 @@ src/
   model/       rmsnorm · rope · attention (GQA+KV-cache) · ffn · transformer
   data/        sources · readers · clean · dedup · sft · sft_dataset
   train/       trainer · data (memmap) · lr_schedule · checkpoint
-  infer/       generate
+  infer/       generate · pencegat
   tokenizer/   bpe · chat_template
 scripts/       check_env · download_corpus · verify_corpus · clean_corpus ·
                train_tokenizer · pack_tokens · train · train_sft ·
-               build_sft_data · generate · chat
-tests/         178 tests
-notes/         notes per phase
+               build_sft_data · eval_perilaku · banding_eval ·
+               export_to_hf · upload_to_hf · deploy_space · generate · chat
+tests/         217 tests
+notes/         notes per phase (01 to 08) + HANDOFF.md
+space/         Gradio web demo app for Hugging Face Spaces
 ```
 
 ---
 
 ## Running
 
+### Try Directly (No Local GPU Required)
+You can test the Wicara model directly in your browser:
+- **Hugging Face Space Demo:** [num1notsvn/wicara-56m-chat-demo](https://huggingface.co/spaces/num1notsvn/wicara-56m-chat-demo)
+- **Google Colab Notebook:** [Wicara_56M_Chat_Demo.ipynb](https://colab.research.google.com/github/bagusardin25/WicaraLLM/blob/main/Wicara_56M_Chat_Demo.ipynb)
+
+### Local Machine
 Python **3.11** from python.org (not MSYS2). NVIDIA GPU. PowerShell, not
 Git Bash.
 
-Chat, if a chat checkpoint is already there:
+Chat via CLI (if a local chat checkpoint is present):
 
 ```powershell
 .venv\Scripts\python.exe scripts\chat.py

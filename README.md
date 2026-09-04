@@ -17,6 +17,9 @@ PyTorch. Tidak ada model jadi, tidak ada API.
 ![tests](https://github.com/bagusardin25/WicaraLLM/actions/workflows/tests.yml/badge.svg)
 [![License](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](LICENSE)
 [![Python](https://img.shields.io/badge/python-3.11-blue.svg)](https://www.python.org/)
+[![Hugging Face Model](https://img.shields.io/badge/%F0%9F%A4%97%20Hugging%20Face-Model-blue)](https://huggingface.co/num1notsvn/wicara-56m-chat)
+[![Hugging Face Space](https://img.shields.io/badge/%F0%9F%A4%97%20Hugging%20Face-Space%20Demo-orange)](https://huggingface.co/spaces/num1notsvn/wicara-56m-chat-demo)
+[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/bagusardin25/WicaraLLM/blob/main/Wicara_56M_Chat_Demo.ipynb)
 
 ```powershell
 .venv\Scripts\python.exe scripts\chat.py
@@ -33,7 +36,7 @@ PyTorch. Tidak ada model jadi, tidak ada API.
 `wicara-56m-chat` menjawab satu giliran lalu berhenti.
 `wicara-56m-base` melanjutkan teks — itu hasil pretrain, sebelum SFT.
 
-Pretrain selesai. Chat jalan. Evaluasi belum. **178 uji.**
+Pretrain selesai. SFT selesai. Evaluasi perilaku selesai (Fase 8). **217 uji.**
 
 ---
 
@@ -141,23 +144,31 @@ src/
   model/       rmsnorm · rope · attention (GQA+KV-cache) · ffn · transformer
   data/        sources · readers · clean · dedup · sft · sft_dataset
   train/       trainer · data (memmap) · lr_schedule · checkpoint
-  infer/       generate
+  infer/       generate · pencegat
   tokenizer/   bpe · chat_template
 scripts/       check_env · download_corpus · verify_corpus · clean_corpus ·
                train_tokenizer · pack_tokens · train · train_sft ·
-               build_sft_data · generate · chat
-tests/         178 uji
-notes/         catatan per fase
+               build_sft_data · eval_perilaku · banding_eval ·
+               export_to_hf · upload_to_hf · deploy_space · generate · chat
+tests/         217 uji
+notes/         catatan per fase (01 s.d. 08) + HANDOFF.md
+space/         aplikasi web demo Gradio untuk Hugging Face Spaces
 ```
 
 ---
 
 ## Menjalankan
 
+### Coba Langsung (Tanpa GPU Lokal)
+Anda bisa langsung mencoba model Wicara di browser:
+- **Hugging Face Space Demo:** [num1notsvn/wicara-56m-chat-demo](https://huggingface.co/spaces/num1notsvn/wicara-56m-chat-demo)
+- **Google Colab Notebook:** [Wicara_56M_Chat_Demo.ipynb](https://colab.research.google.com/github/bagusardin25/WicaraLLM/blob/main/Wicara_56M_Chat_Demo.ipynb)
+
+### Di Komputer Lokal
 Python **3.11** dari python.org (bukan MSYS2). GPU NVIDIA. PowerShell, bukan
 Git Bash.
 
-Ngobrol, kalau checkpoint chat sudah ada:
+Ngobrol lewat CLI (jika checkpoint chat lokal sudah ada):
 
 ```powershell
 .venv\Scripts\python.exe scripts\chat.py
