@@ -97,11 +97,10 @@ Details: [`notes/05-fase-5-pretrain.md`](notes/05-fase-5-pretrain.md).
 3,619 steps, ~20 minutes, val loss **1.37**. SFT loss is not comparable to
 pretrain: only assistant-answer tokens are counted.
 
-39,400 examples, mined from Aya, Cendol, and subtitles. Persona is still
-rough (`"Aku tidak punya nama."`) — handwritten data for that is ready,
-not yet trained.
+39,400 examples, mined from Aya, Cendol, and subtitles, plus 591 handwritten
+examples to anchor persona ("Wicara") and curb hallucinations.
 
-Details: [`notes/06-fase-6-sft.md`](notes/06-fase-6-sft.md).
+Details: [`notes/06-fase-6-sft.md`](notes/06-fase-6-sft.md) and [`notes/06b-fase-6b-tulis-tangan.md`](notes/06b-fase-6b-tulis-tangan.md).
 
 ---
 
@@ -159,16 +158,15 @@ space/         Gradio web demo app for Hugging Face Spaces
 
 ## Running
 
-### Try Directly (No Local GPU Required)
-You can test the Wicara model directly in your browser:
-- **Hugging Face Space Demo:** [num1notsvn/wicara-56m-chat-demo](https://huggingface.co/spaces/num1notsvn/wicara-56m-chat-demo)
-- **Google Colab Notebook:** [Wicara_56M_Chat_Demo.ipynb](https://colab.research.google.com/github/bagusardin25/WicaraLLM/blob/main/Wicara_56M_Chat_Demo.ipynb)
+### Online demo (no local GPU required)
+- **Hugging Face Space:** [num1notsvn/wicara-56m-chat-demo](https://huggingface.co/spaces/num1notsvn/wicara-56m-chat-demo)
+- **Google Colab:** [Wicara_56M_Chat_Demo.ipynb](https://colab.research.google.com/github/bagusardin25/WicaraLLM/blob/main/Wicara_56M_Chat_Demo.ipynb)
 
-### Local Machine
+### Local machine
 Python **3.11** from python.org (not MSYS2). NVIDIA GPU. PowerShell, not
 Git Bash.
 
-Chat via CLI (if a local chat checkpoint is present):
+Chat, if a chat checkpoint is already there:
 
 ```powershell
 .venv\Scripts\python.exe scripts\chat.py
@@ -246,7 +244,7 @@ its own license; the list is in [`data/raw/SOURCES.md`](data/raw/SOURCES.md).
 | TED2020 | CC-BY-NC-ND-4.0 (non-commercial) |
 | OpenSubtitles | see opus.nlpl.eu |
 
-**Weights** are not released. When `wicara-56m-base` is published:
+**Weights** for chat are published on [Hugging Face](https://huggingface.co/num1notsvn/wicara-56m-chat). The base model weights have not been released yet. When `wicara-56m-base` is published:
 OpenSubtitles is ~43% of the corpus, and the legal status of weights as a
 derivative work is unresolved anywhere; TED2020 is 0.3% and non-commercial
 — for commercial use that source has to come out of `KOMPOSISI` in

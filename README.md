@@ -98,11 +98,10 @@ Rincian: [`notes/05-fase-5-pretrain.md`](notes/05-fase-5-pretrain.md).
 3.619 langkah, ~20 menit, val loss **1,37**. Loss SFT tidak sebanding dengan
 pretrain: yang dihitung hanya token jawaban asisten.
 
-39.400 contoh, ditambang dari Aya, Cendol, dan subtitle. Persona masih kasar
-(`"Aku tidak punya nama."`) — data tulis tangan untuk itu sudah ada, belum
-dilatih.
+39.400 contoh, ditambang dari Aya, Cendol, dan subtitle. Ditambah 591 contoh
+tulis tangan untuk mengunci persona ("Wicara") dan membatasi halusinasi.
 
-Rincian: [`notes/06-fase-6-sft.md`](notes/06-fase-6-sft.md).
+Rincian: [`notes/06-fase-6-sft.md`](notes/06-fase-6-sft.md) dan [`notes/06b-fase-6b-tulis-tangan.md`](notes/06b-fase-6b-tulis-tangan.md).
 
 ---
 
@@ -159,16 +158,15 @@ space/         aplikasi web demo Gradio untuk Hugging Face Spaces
 
 ## Menjalankan
 
-### Coba Langsung (Tanpa GPU Lokal)
-Anda bisa langsung mencoba model Wicara di browser:
-- **Hugging Face Space Demo:** [num1notsvn/wicara-56m-chat-demo](https://huggingface.co/spaces/num1notsvn/wicara-56m-chat-demo)
-- **Google Colab Notebook:** [Wicara_56M_Chat_Demo.ipynb](https://colab.research.google.com/github/bagusardin25/WicaraLLM/blob/main/Wicara_56M_Chat_Demo.ipynb)
+### Demo daring (tanpa GPU lokal)
+- **Hugging Face Space:** [num1notsvn/wicara-56m-chat-demo](https://huggingface.co/spaces/num1notsvn/wicara-56m-chat-demo)
+- **Google Colab:** [Wicara_56M_Chat_Demo.ipynb](https://colab.research.google.com/github/bagusardin25/WicaraLLM/blob/main/Wicara_56M_Chat_Demo.ipynb)
 
-### Di Komputer Lokal
+### Di komputer lokal
 Python **3.11** dari python.org (bukan MSYS2). GPU NVIDIA. PowerShell, bukan
 Git Bash.
 
-Ngobrol lewat CLI (jika checkpoint chat lokal sudah ada):
+Ngobrol, kalau checkpoint chat sudah ada:
 
 ```powershell
 .venv\Scripts\python.exe scripts\chat.py
@@ -246,7 +244,7 @@ punya lisensi sendiri; daftarnya di [`data/raw/SOURCES.md`](data/raw/SOURCES.md)
 | TED2020 | CC-BY-NC-ND-4.0 (non-komersial) |
 | OpenSubtitles | lihat opus.nlpl.eu |
 
-**Bobot** belum dirilis. Kalau nanti `wicara-56m-base` dipublikasikan:
+**Bobot chat** sudah kami publikasikan di [Hugging Face](https://huggingface.co/num1notsvn/wicara-56m-chat). Bobot base belum kami rilis. Kalau nanti `wicara-56m-base` dipublikasikan:
 OpenSubtitles ~43% korpus, status hukum bobot sebagai karya turunan belum
 tuntas di mana pun; TED2020 0,3% dan non-komersial — untuk pemakaian
 komersial sumber itu harus dikeluarkan di `KOMPOSISI` pada
