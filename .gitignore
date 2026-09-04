@@ -57,3 +57,12 @@ runs/
 Thumbs.db
 desktop.ini
 
+# ===========================================================================
+# 5. Artefak Ekspor Model & Cache Gradio
+# Folder hf_export/ memuat bobot model ~133 MB (diunggah ke Hugging Face Hub,
+# bukan ke GitHub). .gradio/ memuat cache/sertifikat lokal.
+# ===========================================================================
+hf_export/
+.gradio/
+
+
