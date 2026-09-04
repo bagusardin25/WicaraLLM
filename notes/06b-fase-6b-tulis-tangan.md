@@ -3,7 +3,7 @@
 Tanggal: 2026-08-23
 
 Lanjutan bagian 6 di `notes/HANDOFF.md`. Fase ini **belum dilatih** — datanya
-sudah siap, training-nya dijalankan pemilik.
+sudah siap, training-nya kami jalankan langsung di terminal.
 
 ## Masalah yang dikerjakan
 
@@ -45,7 +45,7 @@ uji `test_kuota_perkenalan_tetap_nol`.
 
 ## Keputusan soal data sintetis
 
-Preferensi pemilik "data asli, bukan sintetis" ditetapkan untuk **korpus
+Prinsip kami "data asli, bukan sintetis" ditetapkan untuk **korpus
 pretraining**, di mana keaslian menentukan integritas 1,1 miliar token. Untuk
 SFT sifatnya berbeda: SFT adalah tahap demonstrasi perilaku, dan dua pola di
 atas **tidak ada di korpus mana pun**:
@@ -54,7 +54,7 @@ atas **tidak ada di korpus mana pun**:
 - **Permintaan terbuka** — dialog film selalu punya konteks adegan, jadi tidak
   pernah ada giliran yang benar-benar kosong topik.
 
-Ditulis 400 contoh, sekitar **1% dari total data SFT**. Disetujui pemilik
+Ditulis 400 contoh, sekitar **1% dari total data SFT**. Disepakati oleh kami
 sebelum ditulis.
 
 **Istilahnya jujur saja: ini data sintetis.** Ditulis oleh asisten, bukan
@@ -91,7 +91,7 @@ Dua hal yang sengaja **tidak** dilakukan saat menulis:
 
 2. **Register divariasikan.** Prompt baku dijawab dengan "Saya", prompt santai
    dijawab dengan "Aku". Panjang jawaban juga divariasikan mengikuti panjang
-   prompt, sesuai tujuan pemilik.
+   prompt, sesuai tujuan kami.
 
 ## Temuan sampingan: anggaran token memotong jawaban panjang
 
@@ -202,7 +202,7 @@ Pengulangan 2× aman untuk kategori ini: menghafal "Saya Wicara" memang
 tujuannya, berbeda dari kategori lain di mana hafalan justru merugikan.
 Dikunci uji `test_persona_mengalahkan_tidak_tahu`.
 
-`tidak_tahu` **tidak** dimatikan — pemilik memilih mengubah satu hal saja.
+`tidak_tahu` **tidak** dimatikan — kami memilih mengubah satu hal saja.
 
 ## Berikutnya
 
@@ -212,5 +212,5 @@ Yang **belum** dikerjakan dan sengaja di luar lingkup:
   dikarang. Butuh contoh berbentuk `"Apa ibu kota X?"` → `"Maaf, saya tidak
   tahu"`, dan bentuk itu tidak ada di dialog film. Catatan Fase 6 sudah
   menyebutnya sebagai perbaikan data yang layak dicoba.
-- **Multi-turn** — pemilik memilih menundanya supaya v3 hanya menguji satu
+- **Multi-turn** — kami memilih menundanya supaya v3 hanya menguji satu
   perubahan.

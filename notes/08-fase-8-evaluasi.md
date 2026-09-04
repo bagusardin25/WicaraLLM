@@ -34,7 +34,7 @@ berbalik setelah disampel ulang:
 terbungkus skenario. Bukan untuk membandingkan versi, melainkan untuk
 menemukan kegagalan yang tidak tertangkap `dev`.
 
-Pemisahan ini penting. Kalau kita menulis data SFT untuk memperbaiki soal yang
+Pemisahan ini penting. Kalau kami menulis data SFT untuk memperbaiki soal yang
 gagal, set itu berhenti jadi "di luar data latih" — skornya naik tanpa
 kemampuannya naik. `uji` disegel supaya masih ada ukuran yang jujur.
 

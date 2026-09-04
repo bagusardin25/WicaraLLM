@@ -15,7 +15,7 @@ sendiri di PyTorch.
 
 Lokasi: `D:\Project\llmgusz` · Repo GitHub: `bagusardin25/WicaraLLM`
 
-**Tujuan pemilik:** model yang bisa diajak percakapan biasa dalam bahasa
+**Tujuan kami:** model yang bisa diajak percakapan biasa dalam bahasa
 Indonesia, dan **menyesuaikan panjang respons dengan prompt** — sapaan
 dijawab singkat, permintaan bercerita dijawab panjang dan natural.
 
@@ -47,7 +47,7 @@ tidak tahu, selalu mengarang). Bagian 6.
 
 **217 uji lolos** (`pytest tests/ -q`).
 
-Catatan per fase ada di `notes/00-` sampai `notes/08-`.
+Catatan per fase ada di `notes/00-` sampai `notes/09-`.
 
 ---
 
@@ -184,7 +184,7 @@ hanya di tonggak besar. Lihat `notes/08-fase-8-evaluasi.md`.
 
 ## 6. LANGKAH BERIKUTNYA — pilih putaran berikutnya
 
-### Yang diinginkan pemilik
+### Yang kami targetkan
 
 Respons **menyesuaikan panjang dengan prompt**: sapaan dijawab singkat,
 permintaan bercerita dijawab panjang dan natural. Ditambah persona: model
@@ -209,7 +209,7 @@ pengukuran per versi. Detail di `notes/08-fase-8-evaluasi.md`.
 Perubahan: v4 memperbesar persona 161 → 704 instance; v5 mematikan
 `tidak_tahu`. Satu perubahan per putaran.
 
-**Tujuan awal pemilik sudah tercapai.** Persona 90%, sapaan 100%, dan
+**Tujuan awal kami sudah tercapai.** Persona 90%, sapaan 100%, dan
 `terbuka` menghasilkan jawaban panjang 67% — bentuknya benar walaupun isinya
 sering tidak koheren.
 
@@ -262,8 +262,8 @@ Dr. Rachmaninoff", "Gunung Lawu +6 meter di atas permukaan laut".
 
 **Obatnya:** contoh penolakan tulis tangan berbentuk `"Apa ibu kota X?"` →
 `"Maaf, saya tidak tahu"`. Bentuk itu tidak ada di dialog film, sudah
-dibuktikan di Fase 6. **Butuh izin pemilik dulu** — lihat bagian 9, persetujuan
-data tulis tangan diberikan per jumlah.
+dibuktikan di Fase 6. **Perlu kami sepakati dulu jumlahnya** — lihat bagian 9,
+penambahan data tulis tangan dibatasi per jumlah.
 
 ### Skor melebih-lebihkan — jangan percaya angkanya mentah-mentah
 
@@ -308,7 +308,7 @@ tidak lagi sampai ke model, tapi teks rujukan layanannya masih kosong.
 - 28 uji di `tests/test_penjaga.py`, termasuk penjaga cegat-palsu terhadap
   seluruh set prompt jinak.
 
-**Konten dewasa: sengaja TIDAK dimitigasi** (keputusan pemilik 2026-08-25).
+**Konten dewasa: sengaja TIDAK dimitigasi** (keputusan kami 2026-08-25).
 Alasannya audiens terbatas — teman sendiri, bukan publik luas. Kalau nanti
 audiensnya melebar, pertimbangkan lagi: cegat input (pola sama dengan
 pencegat krisis) plus pembingkaian sebagai demo riset. Saringan kata sudah
@@ -324,7 +324,7 @@ Keduanya tidak otomatis — `chat.py` memanggilnya secara eksplisit.
 | Contoh penolakan pengetahuan (~150) | ~40 menit | `pengetahuan` 0% → mungkin 40-60%. Satu-satunya kelemahan besar yang MASIH soal data |
 | Persona tidak langsung (~80) | ~40 menit | `lihat` persona 38% → naik sebagian; sisanya kapasitas |
 | Val split stabil (berbasis hash) | ~15 menit, tanpa training | val loss akhirnya bisa dibandingkan |
-| Pretrain 3-4 epoch di 56M yang sama | ~33-44 jam | 20:1 → 60-80:1. Koherensi naik sedang. **DITUNDA** menunggu perangkat pemilik di-upgrade (keputusan 2026-08-25) |
+| Pretrain 3-4 epoch di 56M yang sama | ~33-44 jam | 20:1 → 60-80:1. Koherensi naik sedang. **DITUNDA** menunggu perangkat kami di-upgrade (keputusan 2026-08-25) |
 | Ubah komposisi korpus (subtitle 43% → 25%) | pack ulang + pretrain | Paling mungkin memperbaiki nama karangan sekaligus koherensi |
 | Model `88m` | ~15 jam pretrain | Lebih besar, tapi 56M sendiri belum dimaksimalkan |
 
@@ -509,21 +509,21 @@ yang dilatih. Sudah dikunci 21 uji.
 
 ---
 
-## 9. Preferensi pemilik
+## 9. Prinsip & Konvensi Kami
 
 - Semua dokumentasi, komentar kode, dan pesan CLI dalam **bahasa Indonesia**
-- **Komentar kode ringkas** — 2–4 baris. Pemilik memangkas blok penjelasan
-  panjang; penjelasan panjang tempatnya di `notes/`, bukan di kode.
+- **Komentar kode ringkas** — 2–4 baris. Hindari blok penjelasan panjang di kode;
+  penjelasan panjang tempatnya di `notes/`, bukan di kode.
 - **Data asli, bukan sintetis** — berlaku untuk **korpus pretraining**.
-  Untuk SFT, pemilik menyetujui contoh tulis tangan dua kali: 400 contoh
-  (2026-08-23) lalu ditambah jadi 591 (2026-08-24), setelah dijelaskan bahwa
+  Untuk SFT, kami menyepakati contoh tulis tangan dua kali: 400 contoh
+  (2026-08-23) lalu ditambah jadi 591 (2026-08-24), dengan ketentuan bahwa
   (a) sumber aslinya tidak hilang, (b) porsinya ±2%, dan (c) berkasnya bisa
-  dibaca seluruhnya sebelum dipakai. **Persetujuannya per jumlah — tanyakan
-  lagi kalau mau menambah.**
-- Pemilik menjalankan sendiri training panjang lewat terminal; jangan
+  dibaca seluruhnya sebelum dipakai. **Penambahan data tulis tangan harus
+  dibatasi per jumlah dan diverifikasi.**
+- Kami menjalankan sendiri training panjang lewat terminal; jangan
   dijalankan sebagai proses background yang terikat sesi
 - Konfirmasi dulu sebelum memulai training panjang
-- **Satu perubahan per putaran**, lalu ukur. Pemilik menolak menggabungkan
+- **Satu perubahan per putaran**, lalu ukur. Kami menghindari menggabungkan
   beberapa perubahan sekaligus supaya sebabnya bisa ditunjuk.
 - Repo bersifat open source (Apache-2.0); PDF tech report pihak ketiga di
   `tech_report_llm_openweight/` **tidak boleh** ikut ter-commit

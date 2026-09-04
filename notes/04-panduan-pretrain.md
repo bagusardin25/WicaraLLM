@@ -44,7 +44,7 @@ menentukan adalah VRAM, dan sisa ~2,9 GB cukup untuk pemakaian normal.
 
 ---
 
-## 3. Yang akan Anda lihat
+## 3. Yang akan terlihat di layar
 
 Setiap 10 langkah:
 
@@ -146,7 +146,7 @@ Mode tanya-jawab bebas:
 Opsi yang bisa diatur: `--temperature` (0 = greedy, 0,8 = wajar, 1,2 = liar),
 `--top-k`, `--top-p`, `--repetition-penalty`, `--max-new-tokens`, `--seed`.
 
-### PENTING: yang akan Anda dapat
+### PENTING: karakteristik keluaran base model
 
 `wicara-56m-base` adalah **model base**, bukan chatbot. Ia **melanjutkan
 teks**, bukan menjawab pertanyaan.
