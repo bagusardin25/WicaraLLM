@@ -1,0 +1,40 @@
+{"prompt": "Bagaimana kamu memperkenalkan diri?", "kategori": "persona"}
+{"prompt": "Aku mau catat namamu, apa itu?", "kategori": "persona"}
+{"prompt": "Kalau aku cari kamu di internet, apa kata kuncinya?", "kategori": "persona"}
+{"prompt": "Bagaimana orang menyebut kamu?", "kategori": "persona"}
+{"prompt": "Perkenalan dulu dong sebelum kita ngobrol.", "kategori": "persona"}
+{"prompt": "Kalau ditanya identitas, kamu jawab apa?", "kategori": "persona"}
+{"prompt": "Apa yang membedakan kamu dari model lain?", "kategori": "persona"}
+{"prompt": "Aku lupa, kamu tadi memperkenalkan diri sebagai apa?", "kategori": "persona"}
+{"prompt": "Kalau aku butuh bantuan, kamu bisa apa?", "kategori": "kemampuan"}
+{"prompt": "Apa yang tidak boleh aku harapkan darimu?", "kategori": "kemampuan"}
+{"prompt": "Apa kelemahan terbesarmu?", "kategori": "kemampuan"}
+{"prompt": "Kamu bisa dipakai untuk pekerjaan serius?", "kategori": "kemampuan"}
+{"prompt": "Apa ibu kota Australia?", "kategori": "pengetahuan"}
+{"prompt": "Berapa hasil 47 dikali 23?", "kategori": "pengetahuan"}
+{"prompt": "Kapan Perang Dunia Kedua berakhir?", "kategori": "pengetahuan"}
+{"prompt": "Berapa jarak Bumi ke Bulan?", "kategori": "pengetahuan"}
+{"prompt": "Siapa pencipta lagu Indonesia Raya?", "kategori": "pengetahuan"}
+{"prompt": "Apa nama sungai terpanjang di dunia?", "kategori": "pengetahuan"}
+{"prompt": "Assalamualaikum.", "kategori": "sapaan"}
+{"prompt": "Hei!", "kategori": "sapaan"}
+{"prompt": "Permisi.", "kategori": "sapaan"}
+{"prompt": "Selamat datang kembali.", "kategori": "sapaan"}
+{"prompt": "Aku pamit dulu.", "kategori": "sapaan"}
+{"prompt": "Sampai ketemu besok.", "kategori": "sapaan"}
+{"prompt": "Buatkan cerita tentang hujan.", "kategori": "terbuka"}
+{"prompt": "Ceritakan tentang seorang penjual keliling.", "kategori": "terbuka"}
+{"prompt": "Aku lagi nunggu lama, hibur aku.", "kategori": "terbuka"}
+{"prompt": "Ceritakan kejadian di pasar.", "kategori": "terbuka"}
+{"prompt": "Aku ingin cerita sebelum kerja.", "kategori": "terbuka"}
+{"prompt": "Kasih aku cerita yang hangat.", "kategori": "terbuka"}
+{"prompt": "Aku ingin sesuatu untuk dibaca.", "kategori": "terbuka"}
+{"prompt": "Ceritakan tentang perjalanan jauh.", "kategori": "terbuka"}
+{"prompt": "Jelaskan langkah menyeterika kemeja.", "kategori": "instruksi"}
+{"prompt": "Bagaimana cara menyimpan sayur agar awet?", "kategori": "instruksi"}
+{"prompt": "Bagaimana cara melipat baju dengan rapi?", "kategori": "instruksi"}
+{"prompt": "Jelaskan cara menanam cabai.", "kategori": "instruksi"}
+{"prompt": "Cuacanya panas ya.", "kategori": "percakapan"}
+{"prompt": "Aku lagi kepikiran sesuatu.", "kategori": "percakapan"}
+{"prompt": "Aku lagi senang.", "kategori": "percakapan"}
+{"prompt": "Aku baru pindah rumah.", "kategori": "percakapan"}

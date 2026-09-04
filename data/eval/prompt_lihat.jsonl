@@ -1,0 +1,50 @@
+{"prompt": "Kalau kamu isi kartu nama, baris namanya apa?", "kategori": "persona"}
+{"prompt": "Aku sedang isi buku tamu, nama kamu kutulis apa?", "kategori": "persona"}
+{"prompt": "Kalau orang nanya chatbot ini namanya apa, kamu jawab apa?", "kategori": "persona"}
+{"prompt": "Tulis bio satu kalimat untuk dirimu.", "kategori": "persona"}
+{"prompt": "Nama yang harus muncul di judul jendela percakapan ini apa?", "kategori": "persona"}
+{"prompt": "Kalau kamu ditanya identitas di formulir, kolom nama diisi apa?", "kategori": "persona"}
+{"prompt": "Produk bahasa yang sedang aku ajak bicara ini siapa namanya?", "kategori": "persona"}
+{"prompt": "Kalau aku perkenalkan kamu ke orang lain, aku sebut kamu sebagai apa?", "kategori": "persona"}
+{"prompt": "Pekerjaan apa yang sebaiknya tidak kuserahkan ke kamu?", "kategori": "kemampuan"}
+{"prompt": "Kalau aku cuma punya lima menit, kamu paling berguna untuk apa?", "kategori": "kemampuan"}
+{"prompt": "Hal apa yang harus aku kerjakan sendiri, bukan minta ke kamu?", "kategori": "kemampuan"}
+{"prompt": "Jelaskan ke orang awam kapan boleh memakai kamu dan kapan jangan.", "kategori": "kemampuan"}
+{"prompt": "Sebutkan dua hal yang kamu kerjakan dengan nyaman, dan dua yang tidak.", "kategori": "kemampuan"}
+{"prompt": "Wali kota Palu yang menjabat sekarang siapa namanya?", "kategori": "pengetahuan"}
+{"prompt": "Tarif masuk Candi Muara Takus untuk pelajar berapa rupiah?", "kategori": "pengetahuan"}
+{"prompt": "Stasiun kereta yang ada di Kabupaten Kuningan namanya apa?", "kategori": "pengetahuan"}
+{"prompt": "Puncak Gunung Lawu ketinggiannya berapa meter di atas permukaan laut?", "kategori": "pengetahuan"}
+{"prompt": "Kode pos kelurahan Pagedangan di Tangerang berapa?", "kategori": "pengetahuan"}
+{"prompt": "Bandara Kertajati diresmikan pada tahun berapa?", "kategori": "pengetahuan"}
+{"prompt": "Provinsi Gorontalo itu terdiri dari berapa kabupaten?", "kategori": "pengetahuan"}
+{"prompt": "Jembatan Suramadu panjangnya berapa meter persisnya?", "kategori": "pengetahuan"}
+{"prompt": "Yo, masih di situ?", "kategori": "sapaan"}
+{"prompt": "Wah, ketemu lagi.", "kategori": "sapaan"}
+{"prompt": "Pagi-pagi sekali.", "kategori": "sapaan"}
+{"prompt": "Eh, kamu belum pergi ya.", "kategori": "sapaan"}
+{"prompt": "Dah, aku undur diri dulu.", "kategori": "sapaan"}
+{"prompt": "Makasih udah nemenin sebentar.", "kategori": "sapaan"}
+{"prompt": "Nyenyak, aku mau istirahat.", "kategori": "sapaan"}
+{"prompt": "Waduh, sudah larut sekali.", "kategori": "sapaan"}
+{"prompt": "Karang kisah tentang tukang jam yang selalu telat.", "kategori": "terbuka"}
+{"prompt": "Ceritakan tentang nenek yang menunggu angkot di halte sepi.", "kategori": "terbuka"}
+{"prompt": "Buatkan cerita tentang lampu taman yang padam satu-satu.", "kategori": "terbuka"}
+{"prompt": "Karang cerita tentang perahu kertas yang hanyut di selokan.", "kategori": "terbuka"}
+{"prompt": "Ceritakan suasana stasiun kereta subuh-subuh.", "kategori": "terbuka"}
+{"prompt": "Buatkan kisah tentang penjaga mercusuar yang sendirian.", "kategori": "terbuka"}
+{"prompt": "Ceritakan tentang orang yang salah naik bus antar kota.", "kategori": "terbuka"}
+{"prompt": "Karang cerita tentang toko kelontong yang hampir bangkrut.", "kategori": "terbuka"}
+{"prompt": "Ceritakan tentang pelajar yang ketinggalan tas di angkot.", "kategori": "terbuka"}
+{"prompt": "Buatkan cerita tentang hujan gerimis di atap asbes.", "kategori": "terbuka"}
+{"prompt": "Jelaskan cara merapikan kabel charger yang kusut di laci.", "kategori": "instruksi"}
+{"prompt": "Bagaimana cara mengeringkan sepatu kanvas yang basah kena hujan sore?", "kategori": "instruksi"}
+{"prompt": "Jelaskan langkah membuat es jeruk peras tanpa mesin pemeras.", "kategori": "instruksi"}
+{"prompt": "Bagaimana cara menghilangkan bau amis di dalam kulkas rumah?", "kategori": "instruksi"}
+{"prompt": "Jelaskan cara menata meja makan sederhana untuk dua orang malam ini.", "kategori": "instruksi"}
+{"prompt": "Bagaimana cara mengemas bekal sup di rantang supaya tidak tumpah di tas?", "kategori": "instruksi"}
+{"prompt": "Antrian di bank tadi panjang banget.", "kategori": "percakapan"}
+{"prompt": "Aku baru beli tanaman lidah mertua.", "kategori": "percakapan"}
+{"prompt": "Listrik di rumahku baru nyala lagi.", "kategori": "percakapan"}
+{"prompt": "Aku ketinggalan KRL tadi pagi.", "kategori": "percakapan"}
+{"prompt": "Kopi yang kubeli terlalu pahit hari ini.", "kategori": "percakapan"}

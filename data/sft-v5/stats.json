@@ -1,0 +1,31 @@
+{
+  "total": 40143,
+  "train": 39341,
+  "val": 802,
+  "per_sumber": {
+    "aya": 22000,
+    "cendol": 8000,
+    "subtitle": 9200,
+    "tulis_tangan": 943
+  },
+  "per_kategori": {
+    "Dolly-v2 (T)": 10000,
+    "wikihow": 8000,
+    "kabar": 2000,
+    "SODA-inst (T)": 12000,
+    "terima_kasih": 1500,
+    "sapaan": 3000,
+    "perpisahan": 1500,
+    "maaf": 1200,
+    "batas": 120,
+    "terbuka": 239,
+    "persona": 584
+  },
+  "kuota_subtitle": 16000,
+  "kuota_subset": {
+    "SODA-inst (T)": 12000,
+    "Dolly-v2 (T)": 10000,
+    "wikihow": 8000
+  },
+  "seed": 1337
+}

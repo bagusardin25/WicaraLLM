@@ -1,0 +1,60 @@
+{"prompt": "Kenalkan dirimu ke temanku.", "kategori": "persona"}
+{"prompt": "Kalau ada yang bertanya kamu siapa, apa jawabmu?", "kategori": "persona"}
+{"prompt": "Tuliskan perkenalan singkat tentangmu.", "kategori": "persona"}
+{"prompt": "Sebutkan siapa dirimu dan asalmu.", "kategori": "persona"}
+{"prompt": "Kamu ini asisten siapa?", "kategori": "persona"}
+{"prompt": "Apa nama modelmu?", "kategori": "persona"}
+{"prompt": "Siapa gerangan dirimu?", "kategori": "persona"}
+{"prompt": "Boleh tahu kamu ini apa dan siapa?", "kategori": "persona"}
+{"prompt": "Aku sedang menulis catatan, siapa nama kamu?", "kategori": "persona"}
+{"prompt": "Kamu mewakili siapa?", "kategori": "persona"}
+{"prompt": "Namamu ada artinya nggak?", "kategori": "persona"}
+{"prompt": "Ceritakan asal-usulmu.", "kategori": "persona"}
+{"prompt": "Sebutkan lima hal yang bisa kamu kerjakan.", "kategori": "kemampuan"}
+{"prompt": "Apa batas kemampuanmu?", "kategori": "kemampuan"}
+{"prompt": "Kamu paling cocok dipakai untuk apa?", "kategori": "kemampuan"}
+{"prompt": "Kamu bisa diandalkan untuk apa?", "kategori": "kemampuan"}
+{"prompt": "Jelaskan kegunaanmu ke orang awam.", "kategori": "kemampuan"}
+{"prompt": "Kalau dibandingkan manusia, kamu unggul di mana?", "kategori": "kemampuan"}
+{"prompt": "Berapa jumlah penduduk Surabaya?", "kategori": "pengetahuan"}
+{"prompt": "Siapa penemu bola lampu?", "kategori": "pengetahuan"}
+{"prompt": "Kapan Indonesia merdeka?", "kategori": "pengetahuan"}
+{"prompt": "Siapa penulis novel Bumi Manusia?", "kategori": "pengetahuan"}
+{"prompt": "Berapa tinggi Gunung Semeru?", "kategori": "pengetahuan"}
+{"prompt": "Apa mata uang Jepang?", "kategori": "pengetahuan"}
+{"prompt": "Berapa lama perjalanan Jakarta ke Bandung naik kereta?", "kategori": "pengetahuan"}
+{"prompt": "Apa rumus luas lingkaran?", "kategori": "pengetahuan"}
+{"prompt": "Berapa jumlah provinsi di Indonesia?", "kategori": "pengetahuan"}
+{"prompt": "Pagi!", "kategori": "sapaan"}
+{"prompt": "Selamat sore, semoga harimu lancar.", "kategori": "sapaan"}
+{"prompt": "Malam.", "kategori": "sapaan"}
+{"prompt": "Halo, apa kabar hari ini?", "kategori": "sapaan"}
+{"prompt": "Lama tidak jumpa.", "kategori": "sapaan"}
+{"prompt": "Aku pulang.", "kategori": "sapaan"}
+{"prompt": "Terima kasih ya.", "kategori": "sapaan"}
+{"prompt": "Makasih banyak!", "kategori": "sapaan"}
+{"prompt": "Maaf ya, aku mengganggu waktumu.", "kategori": "sapaan"}
+{"prompt": "Ceritakan apa pun yang kamu suka.", "kategori": "terbuka"}
+{"prompt": "Aku butuh cerita panjang.", "kategori": "terbuka"}
+{"prompt": "Karang sebuah cerita pendek.", "kategori": "terbuka"}
+{"prompt": "Aku ingin dengar sesuatu yang menenangkan.", "kategori": "terbuka"}
+{"prompt": "Ngobrol apa saja, aku dengarkan.", "kategori": "terbuka"}
+{"prompt": "Isi waktuku dong.", "kategori": "terbuka"}
+{"prompt": "Ceritakan suasana pagi di kampung.", "kategori": "terbuka"}
+{"prompt": "Buat cerita tentang anak yang kehilangan sesuatu.", "kategori": "terbuka"}
+{"prompt": "Ceritakan sesuatu yang bikin aku mikir.", "kategori": "terbuka"}
+{"prompt": "Ceritakan tentang persahabatan dua orang.", "kategori": "terbuka"}
+{"prompt": "Karang kisah tentang seekor kucing.", "kategori": "terbuka"}
+{"prompt": "Ceritakan apa yang biasa terjadi sore hari.", "kategori": "terbuka"}
+{"prompt": "Bagaimana cara membuat teh manis?", "kategori": "instruksi"}
+{"prompt": "Jelaskan cara mencuci baju dengan tangan.", "kategori": "instruksi"}
+{"prompt": "Bagaimana cara merawat tanaman dalam pot?", "kategori": "instruksi"}
+{"prompt": "Jelaskan cara membersihkan sepatu.", "kategori": "instruksi"}
+{"prompt": "Bagaimana cara membuat kopi tubruk?", "kategori": "instruksi"}
+{"prompt": "Jelaskan cara memasak mi instan.", "kategori": "instruksi"}
+{"prompt": "Aku capek banget hari ini.", "kategori": "percakapan"}
+{"prompt": "Hari ini menyenangkan.", "kategori": "percakapan"}
+{"prompt": "Aku baru selesai kerja.", "kategori": "percakapan"}
+{"prompt": "Besok aku ada acara.", "kategori": "percakapan"}
+{"prompt": "Aku suka hujan.", "kategori": "percakapan"}
+{"prompt": "Aku kurang tidur.", "kategori": "percakapan"}
