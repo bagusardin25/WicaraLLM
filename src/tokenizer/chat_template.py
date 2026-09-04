@@ -11,6 +11,7 @@ Kenapa special token didefinisikan SEBELUM tokenizer dilatih:
     belum terpakai, supaya eksperimen berikutnya tidak perlu resize.
 """
 
+import re
 from dataclasses import dataclass
 
 # --- Token khusus, ID 0..N ------------------------------------------------
@@ -56,6 +57,21 @@ class Message:
 
 
 _ROLE_TOKEN = {"system": SYSTEM, "user": USER, "assistant": ASSISTANT}
+
+# Tokenizer memetakan "<|assistant|>" yang diketik pengguna ke ID token khusus
+# yang sesungguhnya, jadi pengunjung bisa memalsukan giliran asisten dari kotak
+# chat. Terbukti di uji bermusuhan.
+POLA_TOKEN_KHUSUS = re.compile(r"<\|[a-zA-Z0-9_]*\|>")
+
+
+def bersihkan_input(teks: str) -> str:
+    """Buang penanda token khusus dari teks yang datang dari pengguna.
+
+    WAJIB dipanggil sebelum membentuk Message, BUKAN di dalam render().
+    assistant_spans() menghitung posisi dari len(msg.content); kalau render()
+    memendekkan teks tanpa spans ikut tahu, loss masking bergeser diam-diam.
+    """
+    return POLA_TOKEN_KHUSUS.sub("", teks or "")
 
 
 def render(
