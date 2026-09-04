@@ -2,9 +2,9 @@
 
     .venv\\Scripts\\python.exe scripts\\build_sft_data.py
 
-Hampir semua contoh ditambang (lihat src/data/sft.py). Pengecualian:
-data/sft/tulis_tangan.jsonl — 400 contoh tulis tangan, lihat
-kumpulkan_tulis_tangan().
+Mayoritas contoh ditambang dari korpus (lihat src/data/sft.py). Sisanya
+data/sft/tulis_tangan.jsonl — kita tulis sendiri untuk perilaku yang tidak
+ada di korpus mana pun. Lihat kumpulkan_tulis_tangan().
 """
 
 import argparse
@@ -37,10 +37,11 @@ CLEAN = REPO_ROOT / "data" / "clean"
 OUT = REPO_ROOT / "data" / "sft"
 TULIS_TANGAN = REPO_ROOT / "data" / "sft" / "tulis_tangan.jsonl"
 
-# Kuota sengaja kecil. SFT berlebihan menimpa pretrain.
+# Kuota ditahan kecil. SFT berlebihan menggerus kemampuan bahasa
+# yang didapat susah payah di pretrain.
 KUOTA_SUBTITLE = 16_000
 
-# Pengulangan contoh persona. Lihat kumpulkan_tulis_tangan().
+# Faktor pengulangan contoh persona. Alasannya di kumpulkan_tulis_tangan().
 ULANG_KATEGORI = {"persona", "batas"}
 ULANG_PERSONA = 2
 
@@ -54,17 +55,14 @@ KUOTA_SUBSET = {
 
 # Batas per kategori sapaan supaya satu pola film tidak mendominasi.
 #
-# tidak_tahu: 3.000 slot (7,6%) bikin model jawab "aku tidak tahu" di 30%
-# prompt uji, termasuk sapaan. Contoh tambangnya memasangkan pertanyaan
-# apa pun dengan ketidaktahuan. Pertanyaan ensiklopedis tetap dikarang.
-# Disisakan 600: respons itu sah, cuma tidak boleh jadi default.
-#
-# perkenalan: 0, bukan dikecilkan. Menambang "Siapa namamu?" -> "Namaku X"
-# (X = tokoh film). 1.200 contoh itu melawan 138 persona. Menyisakan
-# sebagian pun tetap mengajarkan nama yang salah.
+# perkenalan dan tidak_tahu dikunci 0: keduanya mengajarkan lawan dari
+# perilaku yang kita bangun. perkenalan menambang "Siapa namamu?" ->
+# nama tokoh film; 55 dari 587 contoh tidak_tahu diawali "Siapa" sehingga
+# membajak pertanyaan identitas. Jangan dihidupkan lagi tanpa mengukur
+# ulang persona lewat scripts/eval_perilaku.py.
 BATAS_KATEGORI = {
     "sapaan": 3000, "kabar": 2000, "perkenalan": 0, "terima_kasih": 1500,
-    "perpisahan": 1500, "maaf": 1200, "tidak_tahu": 600,
+    "perpisahan": 1500, "maaf": 1200, "tidak_tahu": 0,
 }
 
 
@@ -158,16 +156,14 @@ def kumpulkan_parquet(pola: str, kolom_in: str, kolom_out: str,
 
 
 def kumpulkan_tulis_tangan(path: Path, dedup: ExactDedup) -> list[tuple]:
-    """Contoh tulis tangan, bukan tambang.
+    """Contoh yang kita tulis sendiri, bukan hasil tambang.
 
-    Dua pola yang tidak ada di korpus mana pun:
-        persona  Tidak ada "Saya Wicara" di data. Tanpa ini model mengambil
-                 nama tokoh film.
-        terbuka  Permintaan tanpa topik ("ceritakan sesuatu"). Dialog film
-                 selalu punya konteks adegan.
+    Dua perilaku produk yang tidak ada di korpus mana pun:
+        persona  tidak ada teks Indonesia yang memuat "Saya Wicara"
+        terbuka  permintaan tanpa topik; dialog film selalu punya adegan
 
-    Sengaja ~1% dari total. JSONL polos supaya bisa disunting dan terlihat
-    di git diff.
+    Ditahan di ~2% dari total. JSONL polos supaya bisa disunting langsung
+    dan perubahannya terbaca di git diff.
     """
     if not path.exists():
         print(f"    {path.name} tidak ada, dilewati")
@@ -187,8 +183,8 @@ def kumpulkan_tulis_tangan(path: Path, dedup: ExactDedup) -> list[tuple]:
             user = msgs[0]["content"]
             asisten = msgs[1]["content"]
 
-            # Saringan yang sama dengan sumber lain — berkas tangan tidak
-            # boleh menyelundupkan contoh yang ditolak jalur tambang.
+            # Saringan yang sama dengan jalur tambang. Berkas yang disunting
+            # tangan tidak boleh jadi pintu belakang.
             if not layak_instruksi(user, asisten):
                 n_tolak += 1
                 continue
@@ -199,10 +195,10 @@ def kumpulkan_tulis_tangan(path: Path, dedup: ExactDedup) -> list[tuple]:
             per_kategori[d["kategori"]] += 1
             hasil.append((user, asisten, "tulis_tangan", d["kategori"]))
 
-    # v3 punya 161 contoh persona+batas (0,4%) dan tetap menjawab
-    # "Aku Kawis!" — prior nama dari subtitle menang. Diulang supaya
-    # porsinya di atas tidak_tahu (600). Mengulang aman di sini: menghafal
-    # "Saya Wicara" memang tujuannya, beda dari kategori lain.
+    # Pada 161 instance, persona masih kalah dari prior nama subtitle dan
+    # model menjawab "Aku Kawis!". Diulang sampai porsinya menang.
+    # Pengulangan aman khusus di sini: menghafal "Saya Wicara" memang target,
+    # beda dari kategori lain yang justru rusak kalau dihafal.
     ulang = [h for h in hasil if h[3] in ULANG_KATEGORI]
     hasil += ulang * (ULANG_PERSONA - 1)
 
@@ -233,7 +229,8 @@ def main() -> int:
     # Satu ExactDedup lintas sumber.
     dedup = ExactDedup()
 
-    # Tulis tangan dulu: 400 contoh tidak tergantikan, tambang mudah diganti.
+    # Tulis tangan didahulukan supaya menang dedup. Contohnya tidak
+    # tergantikan; contoh tambang selalu ada penggantinya.
     print(f"\n  [tulis tangan] {TULIS_TANGAN.name} — persona & permintaan terbuka")
     semua += kumpulkan_tulis_tangan(TULIS_TANGAN, dedup)
 

@@ -215,14 +215,14 @@ def test_pilihan_ganda_ditolak():
         "Manakah yang benar? Pilihan: - A: ya - B: tidak", "A")
 
 
-# Data tulis tangan. Disunting tangan, jadi bisa rusak tanpa ada yang
-# menahan — JSON salah, kembar, atau jawaban yang pelan-pelan memendek.
+# Berkas tulis tangan disunting manusia, jadi tidak ada yang menahannya
+# rusak: JSON salah, contoh kembar, atau jawaban yang pelan-pelan memendek.
 
 REPO = Path(__file__).resolve().parent.parent
 TULIS_TANGAN = REPO / "data" / "sft" / "tulis_tangan.jsonl"
 
-# Nama diri orang pertama. "namanya" tidak ikut — di kategori terbuka
-# muncul sah ("kucing yang dipanggil namanya").
+# Nama diri orang pertama saja. "namanya" tidak ikut: di kategori terbuka
+# itu pemakaian yang sah ("kucing yang dipanggil namanya").
 POLA_NAMA_DIRI = re.compile(r"\bnama(ku|\s+(saya|aku))\b", re.IGNORECASE)
 
 
@@ -237,7 +237,8 @@ def tulis_tangan():
 def _konstanta_skrip(nama: str):
     """Baca konstanta build_sft_data.py lewat AST.
 
-    Jangan diimpor: skrip itu punya efek samping (stdout.reconfigure, pyarrow).
+    Jangan diimpor: skrip itu punya efek samping saat dimuat
+    (stdout.reconfigure, impor pyarrow).
     """
     sumber = (REPO / "scripts" / "build_sft_data.py").read_text(encoding="utf-8")
     for simpul in ast.parse(sumber).body:
@@ -311,12 +312,148 @@ def test_kuota_perkenalan_tetap_nol():
 
 
 def test_persona_mengalahkan_tidak_tahu(tulis_tangan):
-    """Pelajaran v3: 161 persona kalah dari 600 tidak_tahu, dan model
-    menjawab "Saya tidak tahu" untuk "Kamu bisa apa?". Kalau perbandingan
-    itu berbalik lagi, persona tenggelam lagi.
+    """Persona harus tetap lebih banyak dari tidak_tahu.
+
+    Waktu perbandingannya 161 lawan 600, "Kamu bisa apa?" dijawab
+    "Saya tidak tahu". Kalau berbalik lagi, persona tenggelam lagi.
     """
     ulang_kat = _konstanta_skrip("ULANG_KATEGORI")
     n = sum(1 for d in tulis_tangan if d["kategori"] in ulang_kat)
     n *= _konstanta_skrip("ULANG_PERSONA")
     tidak_tahu = _konstanta_skrip("BATAS_KATEGORI")["tidak_tahu"]
     assert n > tidak_tahu, f"persona {n} <= tidak_tahu {tidak_tahu}"
+
+
+# Soal evaluasi wajib di LUAR data latih. Kalau bocor, angka rilis mengukur
+# hafalan dan kita mengambil keputusan dari nomor yang salah.
+
+EVAL_DIR = REPO / "data" / "eval"
+
+
+@pytest.fixture(scope="module")
+def prompt_eval():
+    paths = [EVAL_DIR / "prompt_dev.jsonl", EVAL_DIR / "prompt_uji.jsonl"]
+    if not all(p.exists() for p in paths):
+        pytest.skip("set prompt evaluasi belum ada")
+    out = []
+    for p in paths:
+        out += [json.loads(b) for b in
+                p.read_text(encoding="utf-8").splitlines() if b.strip()]
+    return out
+
+
+def test_prompt_eval_tidak_bocor_ke_tulis_tangan(prompt_eval, tulis_tangan):
+    latih = {d["messages"][0]["content"].strip().lower() for d in tulis_tangan}
+    bocor = [s["prompt"] for s in prompt_eval
+             if s["prompt"].strip().lower() in latih]
+    assert not bocor, f"prompt eval ada di data latih: {bocor[:5]}"
+
+
+def test_prompt_eval_tidak_bocor_ke_dataset_terbangun(prompt_eval):
+    """Penjaga sesungguhnya: dataset hasil build, bukan cuma berkas tangan.
+
+    Di sinilah kebocoran pertama tertangkap: tiga soal ternyata sudah ada
+    di korpus tambang, termasuk "Selamat siang."
+    """
+    build = sorted(REPO.glob("data/sft*/train.jsonl.gz"))
+    if not build:
+        pytest.skip("belum ada dataset terbangun")
+    eval_set = {s["prompt"].strip().lower() for s in prompt_eval}
+    for path in build:
+        with gzip.open(path, "rt", encoding="utf-8") as f:
+            for baris in f:
+                u = json.loads(baris)["messages"][0]["content"].strip().lower()
+                assert u not in eval_set, f"{path.name} memuat prompt eval: {u!r}"
+
+
+def test_dev_dan_uji_tidak_beririsan(prompt_eval):
+    dev = {json.loads(b)["prompt"] for b in
+           (EVAL_DIR / "prompt_dev.jsonl").read_text(encoding="utf-8").splitlines()
+           if b.strip()}
+    uji = {json.loads(b)["prompt"] for b in
+           (EVAL_DIR / "prompt_uji.jsonl").read_text(encoding="utf-8").splitlines()
+           if b.strip()}
+    assert not (dev & uji), f"beririsan: {sorted(dev & uji)[:3]}"
+    assert len(dev) + len(uji) == len(prompt_eval)
+
+
+@pytest.fixture(scope="module")
+def prompt_lihat():
+    path = EVAL_DIR / "prompt_lihat.jsonl"
+    if not path.exists():
+        pytest.skip("set prompt lihat belum ada")
+    return [json.loads(b) for b in
+            path.read_text(encoding="utf-8").splitlines() if b.strip()]
+
+
+def test_prompt_lihat_lima_puluh_unik(prompt_lihat):
+    assert len(prompt_lihat) == 50
+    teks = [s["prompt"].strip() for s in prompt_lihat]
+    assert len(set(t.lower() for t in teks)) == 50
+    for s in prompt_lihat:
+        assert s["kategori"] in {
+            "persona", "kemampuan", "pengetahuan", "sapaan",
+            "terbuka", "instruksi", "percakapan",
+        }
+
+
+def test_prompt_lihat_tidak_beririsan_dengan_dev_uji(prompt_lihat, prompt_eval):
+    lihat = {s["prompt"].strip().lower() for s in prompt_lihat}
+    lain = {s["prompt"].strip().lower() for s in prompt_eval}
+    assert not (lihat & lain), f"beririsan: {sorted(lihat & lain)[:3]}"
+
+
+def test_prompt_lihat_tidak_bocor_ke_tulis_tangan(prompt_lihat, tulis_tangan):
+    latih = {d["messages"][0]["content"].strip().lower() for d in tulis_tangan}
+    bocor = [s["prompt"] for s in prompt_lihat
+             if s["prompt"].strip().lower() in latih]
+    assert not bocor, f"prompt lihat ada di tulis tangan: {bocor[:5]}"
+
+
+def test_prompt_lihat_tidak_bocor_ke_dataset_terbangun(prompt_lihat):
+    build = sorted(REPO.glob("data/sft*/train.jsonl.gz"))
+    if not build:
+        pytest.skip("belum ada dataset terbangun")
+    lihat = {s["prompt"].strip().lower() for s in prompt_lihat}
+    for path in build:
+        with gzip.open(path, "rt", encoding="utf-8") as f:
+            for baris in f:
+                u = json.loads(baris)["messages"][0]["content"].strip().lower()
+                assert u not in lihat, f"{path.name} memuat prompt lihat: {u!r}"
+
+
+# Set `musuh` sengaja TIDAK diwajibkan bersih dari data latih. Tujuannya
+# memeriksa apa yang keluar, bukan mengukur kemampuan — hafalan pun tetap
+# informasi yang kita butuhkan sebelum rilis publik.
+
+@pytest.fixture(scope="module")
+def prompt_musuh():
+    path = EVAL_DIR / "prompt_musuh.jsonl"
+    if not path.exists():
+        pytest.skip("set prompt musuh belum ada")
+    return [json.loads(b) for b in
+            path.read_text(encoding="utf-8").splitlines() if b.strip()]
+
+
+def test_prompt_musuh_utuh(prompt_musuh):
+    assert len(prompt_musuh) >= 50
+    teks = [s["prompt"].strip().lower() for s in prompt_musuh]
+    assert len(set(teks)) == len(teks), "ada prompt kembar"
+    for s in prompt_musuh:
+        assert s["kategori"] in {
+            "provokasi", "sara", "bahaya", "dewasa", "premis_palsu", "injeksi",
+        }
+
+
+def test_kategori_musuh_dikenali_evaluator(prompt_musuh):
+    """Kategori tak dikenal bikin eval_perilaku.py mati KeyError di tengah run."""
+    sumber = (REPO / "scripts" / "eval_perilaku.py").read_text(encoding="utf-8")
+    for s in prompt_musuh:
+        assert f'"{s["kategori"]}"' in sumber, f"tak ada di PERIKSA: {s['kategori']}"
+
+
+def test_set_musuh_punya_probe_injeksi(prompt_musuh):
+    """Token khusus di input user harus ikut diuji: pengunjung bisa memakainya
+    untuk memalsukan giliran asisten."""
+    injeksi = [s["prompt"] for s in prompt_musuh if s["kategori"] == "injeksi"]
+    assert any("<|" in p for p in injeksi), "tidak ada probe token khusus"

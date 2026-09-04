@@ -2,6 +2,7 @@
 
     .venv\\Scripts\\python.exe scripts\\chat.py
     .venv\\Scripts\\python.exe scripts\\chat.py --uji
+    .venv\\Scripts\\python.exe scripts\\chat.py --soal
 
 Perintah saat mengobrol:
     /baru    mulai percakapan dari awal (lupakan riwayat)
@@ -10,6 +11,7 @@ Perintah saat mengobrol:
 """
 
 import argparse
+import json
 import sys
 from pathlib import Path
 
@@ -20,6 +22,7 @@ sys.path.insert(0, str(REPO_ROOT))
 sys.stdout.reconfigure(encoding="utf-8", errors="replace")
 
 from src.infer.generate import generate  # noqa: E402
+from src.infer.pencegat import cegat  # noqa: E402
 from src.model.config import ModelConfig  # noqa: E402
 from src.model.transformer import MiniLLM  # noqa: E402
 from src.tokenizer.bpe import load as load_tokenizer  # noqa: E402
@@ -27,14 +30,16 @@ from src.tokenizer.chat_template import (  # noqa: E402
     DEFAULT_SYSTEM_PROMPT,
     END_TURN_ID,
     Message,
+    bersihkan_input,
     render,
 )
 
-CKPT = REPO_ROOT / "checkpoints" / "wicara-56m-chat-v2" / "best.pt"
+CKPT = REPO_ROOT / "checkpoints" / "wicara-56m-chat-v5" / "best.pt"
 TOKENIZER = REPO_ROOT / "data" / "tokenizer" / "wicara-bpe-16k.json"
+SOAL_LIHAT = REPO_ROOT / "data" / "eval" / "prompt_lihat.jsonl"
 
-# Satu prompt per kategori SFT, plus satu pertanyaan faktual.
-# Empat terakhir: persona & permintaan terbuka (data tulis tangan).
+# Uji cepat sebelum rilis: satu prompt per kategori, plus satu pertanyaan
+# faktual. Empat terakhir menyasar perilaku yang kita tulis sendiri.
 PROMPT_UJI = [
     "Halo!",
     "Apa kabar?",
@@ -62,7 +67,17 @@ def muat(ckpt_path: Path, device: str):
 
 
 def jawab(model, tok, riwayat, sysprompt, opsi) -> str:
-    """Satu giliran jawaban, dengan seluruh riwayat sebagai konteks."""
+    """Satu giliran jawaban, dengan seluruh riwayat sebagai konteks.
+
+    Pencegat krisis di sini jaring pengaman untuk pemanggil mana pun, termasuk
+    jalur API nanti. Loop interaktif mencegat lebih dulu supaya pertukarannya
+    tidak masuk riwayat.
+    """
+    if riwayat and riwayat[-1].role == "user":
+        tetap = cegat(riwayat[-1].content)
+        if tetap:
+            return tetap
+
     teks = render(riwayat, add_generation_prompt=True, system_prompt=sysprompt)
     ids = tok.encode(teks).ids
 
@@ -82,7 +97,8 @@ def main() -> int:
     p = argparse.ArgumentParser()
     p.add_argument("--ckpt", default=str(CKPT))
     p.add_argument("--tokenizer", default=str(TOKENIZER))
-    # 100 token ~426 char, median wikihow 632 char. 160 ~680 char.
+    # Anggaran keluaran. 100 token hanya ~426 char dan memotong jawaban
+    # panjang di tengah kalimat; median wikihow saja 632 char.
     p.add_argument("--max-new-tokens", type=int, default=160)
     p.add_argument("--temperature", type=float, default=0.7)
     p.add_argument("--top-k", type=int, default=40)
@@ -91,6 +107,8 @@ def main() -> int:
     p.add_argument("--no-system-prompt", action="store_true")
     p.add_argument("--uji", action="store_true",
                    help="jalankan daftar prompt uji lalu keluar")
+    p.add_argument("--soal", action="store_true",
+                   help="kirim 50 soal di luar data latih, cetak jawaban lengkap")
     p.add_argument("--device",
                    default="cuda" if torch.cuda.is_available() else "cpu")
     args = p.parse_args()
@@ -116,6 +134,24 @@ def main() -> int:
     print(f"  checkpoint : {ckpt_path.name} (langkah {ckpt['step']:,}, "
           f"val loss {ckpt['best_val_loss']:.4f})")
     print("=" * 70)
+
+    if args.soal:
+        if not SOAL_LIHAT.exists():
+            print(f"Berkas soal tidak ada: {SOAL_LIHAT}")
+            return 1
+        soal = [json.loads(b) for b in
+                SOAL_LIHAT.read_text(encoding="utf-8").splitlines() if b.strip()]
+        print(f"\n  50 soal di luar data latih — jawaban lengkap, satu sampel")
+        print(f"  {len(soal)} prompt · suhu {opsi['temperature']}\n")
+        for i, s in enumerate(soal, 1):
+            prompt = s["prompt"]
+            hasil = jawab(model, tok, [Message("user", prompt)],
+                          sysprompt, opsi)
+            print(f"  [{i:02d}/{len(soal)}] {s.get('kategori', '-')}")
+            print(f"  Anda   : {prompt}")
+            print(f"  Wicara : {hasil}\n")
+        print("  Selesai.")
+        return 0
 
     if args.uji:
         for prompt in PROMPT_UJI:
@@ -147,6 +183,18 @@ def main() -> int:
                 print(f"  (suhu -> {opsi['temperature']})\n")
             except (IndexError, ValueError):
                 print("  (format: /suhu 0.7)\n")
+            continue
+
+        # Disanitasi di sini, bukan di render(): teks yang tersimpan di riwayat
+        # harus sudah bersih supaya giliran berikutnya ikut aman.
+        teks = bersihkan_input(teks)
+
+        # Pertukaran yang dicegat tidak masuk riwayat. Model tidak pernah
+        # melihatnya, jadi tidak boleh diberi tahu seolah ia yang menjawab —
+        # dan tanpa ini frasa dari pesan tetap terbawa ke giliran berikutnya.
+        tetap = cegat(teks)
+        if tetap:
+            print(f"  Wicara : {tetap}\n")
             continue
 
         riwayat.append(Message("user", teks))
