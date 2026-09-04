@@ -63,6 +63,10 @@ desktop.ini
 # bukan ke GitHub). .gradio/ memuat cache/sertifikat lokal.
 # ===========================================================================
 hf_export/
+gguf_export/
 .gradio/
+tools/
+*.gguf
+
 
 

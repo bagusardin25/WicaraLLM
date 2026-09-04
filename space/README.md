@@ -8,6 +8,8 @@ app_file: app.py
 pinned: false
 license: apache-2.0
 short_description: 56M parameter Indonesian Conversational LLM
+models:
+  - num1notsvn/wicara-56m-chat
 ---
 
 # Wicara 56M Chat Demo
